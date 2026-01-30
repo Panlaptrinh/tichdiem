@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Tích Điểm - Voucher</title>
+    <title>Lá Mây - Hệ Thống Tích Điểm</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -22,19 +22,55 @@
 
     <!-- Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669', // Emerald 600
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Nunito', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .glass {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            min-height: 100vh;
         }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .btn-primary { background-color: #2563eb; color: white; }
-        .btn-primary:hover { background-color: #1d4ed8; }
+        .logo-font { font-family: 'Playfair Display', serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+        }
+        .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body>
@@ -45,21 +81,25 @@
         
         // --- Firebase Configuration ---
         const firebaseConfig = {
-  apiKey: "AIzaSyDLQBLROJ1ABogfjll-9ucznO3tchy-4aE",
-  authDomain: "shop-tich-diem.firebaseapp.com",
-  projectId: "shop-tich-diem",
-  storageBucket: "shop-tich-diem.firebasestorage.app",
-  messagingSenderId: "767439185361",
-  appId: "1:767439185361:web:a33131993aa244f4cc2cf0",
-  measurementId: "G-3JZ18BHBD5"
-};
+            apiKey: "AIzaSyDLQBLROJ1ABogfjll-9ucznO3tchy-4aE",
+            authDomain: "shop-tich-diem.firebaseapp.com",
+            projectId: "shop-tich-diem",
+            storageBucket: "shop-tich-diem.firebasestorage.app",
+            messagingSenderId: "767439185361",
+            appId: "1:767439185361:web:a33131993aa244f4cc2cf0",
+            measurementId: "G-3JZ18BHBD5"
+        };
 
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const auth = firebase.auth();
         const db = firebase.firestore();
-        const appId = window.__app_id || 'loyalty-voucher-v1';
+        // Using a new appId namespace to separate from old data if needed, or keep same to preserve users
+        const appId = window.__app_id || 'lamay-loyalty-system'; 
+
+        // Logo URL from user upload
+        const LOGO_URL = "logolamay.png";
 
         // --- Helpers ---
         const getCollectionRef = (name) => {
@@ -68,35 +108,34 @@
         const getUserRef = (phone) => {
             return getCollectionRef('users').doc(phone);
         };
-        const getVoucherRef = (code) => {
-            return getCollectionRef('vouchers').doc(code);
-        };
-
-        // Tạo mã ngẫu nhiên: VD: GIFT-8X92
-        const generateCode = () => {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Bỏ các ký tự dễ nhầm lẫn (I, 1, O, 0)
-            let result = '';
-            for (let i = 0; i < 4; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-            return `GIFT-${result}`;
-        };
 
         // --- Components ---
 
         const Notification = ({ message, type, onClose }) => {
             if (!message) return null;
-            const bgClass = type === 'success' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200';
+            const styles = type === 'success' 
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                : 'bg-red-100 text-red-800 border-red-200';
+            
             return (
-                <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg border shadow-lg flex items-center gap-2 animate-fade-in ${bgClass}`}>
-                    <i className={`fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
-                    <span>{message}</span>
-                    <button onClick={onClose} className="ml-2 hover:opacity-75"><i className="fas fa-times"></i></button>
+                <div className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-xl border shadow-xl flex items-center gap-3 animate-fade-in ${styles}`}>
+                    <i className={`fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-xl`}></i>
+                    <span className="font-medium">{message}</span>
+                    <button onClick={onClose} className="ml-4 hover:opacity-60 transition"><i className="fas fa-times"></i></button>
                 </div>
+            );
+        };
+
+        const BrandLogo = ({ size = "md" }) => {
+            const dims = size === "lg" ? "h-24" : size === "md" ? "h-12" : "h-8";
+            return (
+                <img src={LOGO_URL} alt="Lá Mây Logo" className={`${dims} object-contain drop-shadow-sm hover:scale-105 transition duration-300`} />
             );
         };
 
         const App = () => {
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('home'); // home, admin, customer
+            const [view, setView] = useState('home'); 
             const [notification, setNotification] = useState({ msg: '', type: '' });
             const [loading, setLoading] = useState(true);
 
@@ -125,87 +164,92 @@
                 setTimeout(() => setNotification({ msg: '', type: '' }), 4000);
             };
 
-            if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><i className="fas fa-spinner fa-spin text-blue-600 text-3xl"></i></div>;
+            if (loading) return (
+                <div className="min-h-screen flex items-center justify-center bg-brand-50">
+                    <div className="text-center animate-pulse">
+                        <BrandLogo size="lg" />
+                        <p className="mt-4 text-brand-800 font-medium">Đang tải dữ liệu...</p>
+                    </div>
+                </div>
+            );
 
             return (
-                <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
+                <div className="min-h-screen text-gray-800 font-sans selection:bg-brand-200">
                     <Notification message={notification.msg} type={notification.type} onClose={() => setNotification({ msg: '', type: '' })} />
                     
-                    <header className="bg-white shadow-sm sticky top-0 z-40">
-                        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-                            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition" onClick={() => setView('home')}>
-                                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200">
-                                    <i className="fas fa-gift"></i>
-                                </div>
-                                <div>
-                                    <h1 className="font-bold text-lg leading-tight text-gray-800">Loyalty App</h1>
-                                    <p className="text-xs text-gray-500">Tích điểm đổi quà</p>
-                                </div>
+                    <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-brand-100">
+                        <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('home')}>
+                                <BrandLogo size="md" />
                             </div>
                             {view !== 'home' && (
-                                <button onClick={() => setView('home')} className="text-sm font-medium text-gray-500 hover:text-blue-600 transition flex items-center gap-1">
-                                    <i className="fas fa-arrow-left"></i> Trang chủ
+                                <button onClick={() => setView('home')} className="px-4 py-2 rounded-full text-sm font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 transition flex items-center gap-2">
+                                    <i className="fas fa-home"></i> Trang chủ
                                 </button>
                             )}
                         </div>
                     </header>
 
-                    <main className="max-w-4xl mx-auto px-4 py-8">
+                    <main className="max-w-5xl mx-auto px-4 py-8">
                         {view === 'home' && <HomeView setView={setView} />}
                         {view === 'admin' && <AdminView user={user} showNotify={showNotify} />}
                         {view === 'customer' && <CustomerView user={user} showNotify={showNotify} />}
                     </main>
 
-                    <footer className="text-center py-6 text-gray-400 text-xs">
-                        <p>© 2024 Hệ thống tích điểm - Phiên bản Voucher</p>
+                    <footer className="text-center py-8 text-brand-800/60 text-sm">
+                        <p>© 2024 Lá Mây - Natural & Organic.</p>
+                        <p className="text-xs mt-1">Hệ thống tích điểm khách hàng thân thiết</p>
                     </footer>
                 </div>
             );
         };
 
         const HomeView = ({ setView }) => (
-            <div className="flex flex-col items-center justify-center py-10 gap-8 animate-fade-in">
-                <div className="text-center mb-2">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">Xin chào!</h2>
-                    <p className="text-gray-600">Vui lòng chọn vai trò để tiếp tục</p>
+            <div className="flex flex-col items-center justify-center py-10 gap-10 animate-fade-in">
+                <div className="text-center max-w-2xl">
+                    <h1 className="text-4xl md:text-5xl font-bold text-brand-900 mb-4 logo-font">Lá Mây</h1>
+                    <p className="text-brand-700 text-lg">Chào mừng bạn đến với hệ thống tích điểm.</p>
                 </div>
                 
-                <div className="grid md:grid-cols-2 gap-6 w-full max-w-2xl px-4">
+                <div className="grid md:grid-cols-2 gap-8 w-full max-w-3xl px-4">
                     <button 
                         onClick={() => setView('customer')}
-                        className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 flex flex-col items-center gap-4 group cursor-pointer"
+                        className="glass-panel p-8 rounded-3xl hover:shadow-2xl transition-all hover:-translate-y-2 group cursor-pointer border-t-4 border-brand-500 text-center relative overflow-hidden"
                     >
-                        <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 text-3xl group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                        <div className="absolute top-0 right-0 p-4 opacity-5 text-9xl text-brand-900 group-hover:scale-110 transition duration-700"><i className="fas fa-leaf"></i></div>
+                        <div className="w-20 h-20 mx-auto bg-brand-100 rounded-full flex items-center justify-center text-brand-600 text-3xl mb-6 group-hover:bg-brand-600 group-hover:text-white transition-colors duration-300 shadow-inner">
                             <i className="fas fa-user"></i>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">Khách Hàng</h3>
-                        <p className="text-gray-500 text-center text-sm">Đăng ký, tích điểm và nhập mã thưởng.</p>
+                        <h3 className="text-2xl font-bold text-brand-900 mb-2">Khách Hàng</h3>
+                        <p className="text-gray-600 text-sm">Kiểm tra điểm tích lũy, lịch sử giao dịch và mã thành viên.</p>
                     </button>
 
                     <button 
                         onClick={() => setView('admin')}
-                        className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 flex flex-col items-center gap-4 group cursor-pointer"
+                        className="glass-panel p-8 rounded-3xl hover:shadow-2xl transition-all hover:-translate-y-2 group cursor-pointer border-t-4 border-gray-500 text-center relative overflow-hidden"
                     >
-                        <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center text-purple-600 text-3xl group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
-                            <i className="fas fa-cogs"></i>
+                         <div className="absolute top-0 right-0 p-4 opacity-5 text-9xl text-gray-900 group-hover:scale-110 transition duration-700"><i className="fas fa-cogs"></i></div>
+                        <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center text-gray-600 text-3xl mb-6 group-hover:bg-gray-700 group-hover:text-white transition-colors duration-300 shadow-inner">
+                            <i className="fas fa-store"></i>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">Quản Trị Viên</h3>
-                        <p className="text-gray-500 text-center text-sm">Tạo mã thưởng và quản lý danh sách.</p>
+                        <h3 className="text-2xl font-bold text-gray-800 mb-2">Cửa Hàng (Admin)</h3>
+                        <p className="text-gray-600 text-sm">Tích điểm trực tiếp cho khách và quản lý thành viên.</p>
                     </button>
                 </div>
             </div>
         );
 
         const AdminView = ({ user, showNotify }) => {
-            const [activeTab, setActiveTab] = useState('create-code'); // create-code, list
-            const [pointValue, setPointValue] = useState('');
-            const [generatedCode, setGeneratedCode] = useState('');
+            const [activeTab, setActiveTab] = useState('add-points'); 
+            const [pointsToAdd, setPointsToAdd] = useState('');
+            const [searchPhone, setSearchPhone] = useState('');
+            const [customerInfo, setCustomerInfo] = useState(null);
             const [usersList, setUsersList] = useState([]);
             const [pin, setPin] = useState('');
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
 
-            // Fetch users list logic
+            // Fetch users list
             useEffect(() => {
                 if (!isAuthenticated || activeTab !== 'list') return;
                 const unsubscribe = getCollectionRef('users').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -215,38 +259,82 @@
                 return () => unsubscribe();
             }, [activeTab, isAuthenticated]);
 
-            const handleCreateCode = async (e) => {
+            // Tìm khách hàng
+            const handleSearchCustomer = async (e) => {
                 e.preventDefault();
-                if (!pointValue || parseInt(pointValue) <= 0) return showNotify("Vui lòng nhập số điểm hợp lệ", "error");
+                if(!searchPhone) return;
+                setIsSubmitting(true);
+                try {
+                    const doc = await getUserRef(searchPhone).get();
+                    if(doc.exists) {
+                        setCustomerInfo(doc.data());
+                        showNotify("Đã tìm thấy khách hàng", "success");
+                    } else {
+                        setCustomerInfo(null);
+                        // Tự động gợi ý tạo mới nếu muốn (nhưng ở đây báo lỗi cho đơn giản)
+                        if(confirm("Khách hàng này chưa tồn tại. Bạn có muốn tạo mới ngay không?")) {
+                            const name = prompt("Nhập tên khách hàng:");
+                            if(name) {
+                                const newUser = {
+                                    name: name,
+                                    phoneNumber: searchPhone,
+                                    currentPoints: 0,
+                                    createdAt: new Date().toISOString()
+                                };
+                                await getUserRef(searchPhone).set(newUser);
+                                setCustomerInfo(newUser);
+                                showNotify("Đã tạo khách hàng mới!", "success");
+                            }
+                        }
+                    }
+                } catch(err) {
+                    showNotify("Lỗi: " + err.message, "error");
+                }
+                setIsSubmitting(false);
+            }
+
+            const handleDirectAddPoints = async (e) => {
+                e.preventDefault();
+                if (!pointsToAdd || parseInt(pointsToAdd) <= 0 || !customerInfo) return;
 
                 setIsSubmitting(true);
                 try {
-                    const newCode = generateCode();
-                    const voucherData = {
-                        code: newCode,
-                        value: parseInt(pointValue),
-                        status: 'active', // active, used
-                        createdBy: 'admin',
-                        createdAt: new Date().toISOString()
-                    };
+                    const amount = parseInt(pointsToAdd);
+                    const newTotal = (customerInfo.currentPoints || 0) + amount;
 
-                    await getVoucherRef(newCode).set(voucherData);
-                    setGeneratedCode(newCode);
-                    showNotify("Tạo mã thành công!", "success");
-                    setPointValue('');
+                    // 1. Update User Points
+                    await getUserRef(customerInfo.phoneNumber).update({
+                        currentPoints: newTotal,
+                        lastTransaction: new Date().toISOString()
+                    });
+
+                    // 2. Create Transaction Record
+                    await getCollectionRef('transactions').add({
+                        phoneNumber: customerInfo.phoneNumber,
+                        amount: amount,
+                        type: 'earn_direct',
+                        note: 'Tích điểm tại quầy',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    showNotify(`Đã cộng ${amount} điểm cho ${customerInfo.name}!`, "success");
+                    
+                    // Reset
+                    setPointsToAdd('');
+                    setCustomerInfo({ ...customerInfo, currentPoints: newTotal }); // Update UI locally
+
                 } catch (error) {
                     showNotify("Lỗi: " + error.message, "error");
                 }
                 setIsSubmitting(false);
             };
 
-            // Login Logic
             if (!isAuthenticated) {
                 return (
-                    <div className="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-lg text-center animate-fade-in mt-10">
-                        <div className="mb-4 text-purple-600 text-4xl"><i className="fas fa-lock"></i></div>
-                        <h3 className="text-xl font-bold mb-2">Khu vực quản trị</h3>
-                        <p className="text-gray-500 mb-6 text-sm">Nhập mật khẩu quản trị để tiếp tục</p>
+                    <div className="max-w-md mx-auto glass-panel p-10 rounded-3xl text-center animate-fade-in mt-10">
+                        <div className="mb-6 text-brand-600 text-5xl"><i className="fas fa-shield-alt"></i></div>
+                        <h3 className="text-2xl font-bold mb-2 text-brand-900">Quản trị viên</h3>
+                        <p className="text-gray-500 mb-8">Vui lòng nhập mã PIN bảo mật</p>
                         <form onSubmit={(e) => {
                             e.preventDefault();
                             if (pin === '2209') setIsAuthenticated(true);
@@ -254,14 +342,14 @@
                         }}>
                             <input 
                                 type="password" 
-                                className="w-full p-3 border border-gray-300 rounded-lg mb-4 text-center text-2xl tracking-widest outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                                className="w-full p-4 border border-brand-200 rounded-xl mb-6 text-center text-3xl tracking-[1em] outline-none focus:ring-2 focus:ring-brand-500 bg-white/50 font-bold text-brand-800"
                                 maxLength="4"
                                 value={pin}
                                 onChange={(e) => setPin(e.target.value)}
-                                placeholder="****"
+                                placeholder="••••"
                                 autoFocus
                             />
-                            <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition">
+                            <button type="submit" className="w-full bg-brand-600 text-white py-4 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
                                 Đăng Nhập
                             </button>
                         </form>
@@ -269,61 +357,76 @@
                 );
             }
 
-            // Main Admin UI
             return (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in min-h-[400px]">
-                    <div className="flex border-b">
+                <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in min-h-[500px] border border-brand-100">
+                    <div className="flex border-b border-gray-100">
                         <button 
-                            onClick={() => setActiveTab('create-code')}
-                            className={`flex-1 py-4 font-medium text-sm transition-colors ${activeTab === 'create-code' ? 'bg-purple-50 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                            onClick={() => setActiveTab('add-points')}
+                            className={`flex-1 py-5 font-bold text-sm transition-colors ${activeTab === 'add-points' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
                         >
-                            <i className="fas fa-plus-circle mr-2"></i>Tạo Mã Thưởng
+                            <i className="fas fa-calculator mr-2"></i>Tích Điểm Tại Quầy
                         </button>
                         <button 
                             onClick={() => setActiveTab('list')}
-                            className={`flex-1 py-4 font-medium text-sm transition-colors ${activeTab === 'list' ? 'bg-purple-50 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                            className={`flex-1 py-5 font-bold text-sm transition-colors ${activeTab === 'list' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
                         >
-                            <i className="fas fa-users mr-2"></i>Danh Sách KH
+                            <i className="fas fa-users mr-2"></i>Danh Sách Khách
                         </button>
                     </div>
 
-                    <div className="p-6">
-                        {activeTab === 'create-code' && (
-                            <div className="max-w-md mx-auto">
-                                <div className="text-center mb-6">
-                                    <h3 className="text-xl font-bold text-gray-800">Phát Hành Mã Điểm</h3>
-                                    <p className="text-sm text-gray-500">Tạo mã để gửi cho khách hàng nhập</p>
+                    <div className="p-8 bg-gray-50/50 h-full">
+                        {activeTab === 'add-points' && (
+                            <div className="max-w-lg mx-auto">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Tìm khách hàng (SĐT)</label>
+                                    <form onSubmit={handleSearchCustomer} className="flex gap-2">
+                                        <input 
+                                            type="tel"
+                                            value={searchPhone}
+                                            onChange={e => setSearchPhone(e.target.value)}
+                                            className="flex-1 p-3 border rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-lg font-mono text-brand-900"
+                                            placeholder="Nhập số điện thoại..."
+                                            autoFocus
+                                        />
+                                        <button type="submit" className="bg-gray-800 text-white px-6 rounded-xl hover:bg-black transition">
+                                            <i className="fas fa-search"></i>
+                                        </button>
+                                    </form>
                                 </div>
 
-                                <form onSubmit={handleCreateCode} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Giá trị điểm thưởng</label>
-                                        <div className="relative">
-                                            <input 
-                                                type="number" 
-                                                value={pointValue}
-                                                onChange={e => setPointValue(e.target.value)}
-                                                className="w-full p-4 pl-12 border rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-lg font-bold"
-                                                placeholder="VD: 100"
-                                                required
-                                            />
-                                            <div className="absolute left-4 top-4 text-gray-400">
-                                                <i className="fas fa-star"></i>
+                                {customerInfo && (
+                                    <div className="bg-white p-8 rounded-2xl shadow-lg border-t-4 border-brand-500 animate-fade-in">
+                                        <div className="text-center mb-6">
+                                            <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 text-2xl mx-auto mb-3">
+                                                <i className="fas fa-user-check"></i>
+                                            </div>
+                                            <h3 className="text-xl font-bold text-gray-900">{customerInfo.name}</h3>
+                                            <p className="text-gray-500 font-mono">{customerInfo.phoneNumber}</p>
+                                            <div className="mt-4 inline-block bg-brand-50 px-4 py-2 rounded-lg border border-brand-100">
+                                                <span className="text-gray-600 text-sm">Điểm hiện tại:</span>
+                                                <span className="ml-2 text-2xl font-bold text-brand-700">{customerInfo.currentPoints}</span>
                                             </div>
                                         </div>
-                                    </div>
-                                    <button disabled={isSubmitting} type="submit" className="w-full bg-purple-600 text-white py-4 rounded-xl font-bold hover:bg-purple-700 transition shadow-lg shadow-purple-200">
-                                        {isSubmitting ? 'Đang tạo...' : 'Tạo Mã Ngay'}
-                                    </button>
-                                </form>
 
-                                {generatedCode && (
-                                    <div className="mt-8 bg-green-50 border border-green-200 rounded-xl p-6 text-center animate-fade-in">
-                                        <p className="text-green-800 text-sm mb-2 font-medium">Mã thưởng vừa tạo:</p>
-                                        <div className="bg-white border-2 border-dashed border-green-400 rounded-lg p-3 mb-3 cursor-pointer hover:bg-green-50" onClick={() => {navigator.clipboard.writeText(generatedCode); showNotify('Đã sao chép mã!');}}>
-                                            <span className="text-3xl font-black text-green-700 tracking-wider font-mono">{generatedCode}</span>
-                                        </div>
-                                        <p className="text-xs text-gray-500">Gửi mã này cho khách hàng để họ tự nhập vào hệ thống.</p>
+                                        <form onSubmit={handleDirectAddPoints} className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Nhập số điểm muốn cộng</label>
+                                                <div className="relative">
+                                                    <input 
+                                                        type="number" 
+                                                        value={pointsToAdd}
+                                                        onChange={e => setPointsToAdd(e.target.value)}
+                                                        className="w-full p-4 pl-4 border rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-xl font-bold text-brand-700"
+                                                        placeholder="0"
+                                                        required
+                                                    />
+                                                    <span className="absolute right-4 top-4 text-gray-400 font-bold">điểm</span>
+                                                </div>
+                                            </div>
+                                            <button disabled={isSubmitting} type="submit" className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-xl font-bold hover:shadow-lg transition transform hover:-translate-y-1">
+                                                {isSubmitting ? 'Đang xử lý...' : 'Xác Nhận Cộng Điểm'}
+                                            </button>
+                                        </form>
                                     </div>
                                 )}
                             </div>
@@ -331,33 +434,36 @@
 
                         {activeTab === 'list' && (
                             <div>
-                                <h3 className="text-lg font-bold text-gray-800 mb-4">Thành viên đã đăng ký ({usersList.length})</h3>
-                                <div className="overflow-x-auto border rounded-lg">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-bold text-brand-900">Danh sách thành viên ({usersList.length})</h3>
+                                    <button className="text-sm text-brand-600 hover:underline"><i className="fas fa-file-export mr-1"></i> Xuất Excel</button>
+                                </div>
+                                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
                                             <tr>
-                                                <th className="p-3">Thông tin</th>
-                                                <th className="p-3 text-right">Điểm Tích Lũy</th>
-                                                <th className="p-3 text-right">Ngày ĐK</th>
+                                                <th className="p-4">Khách hàng</th>
+                                                <th className="p-4 text-right">Điểm tích lũy</th>
+                                                <th className="p-4 text-right">Ngày tham gia</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y">
+                                        <tbody className="divide-y divide-gray-100">
                                             {usersList.map((u) => (
-                                                <tr key={u.phoneNumber} className="hover:bg-gray-50">
-                                                    <td className="p-3">
+                                                <tr key={u.phoneNumber} className="hover:bg-brand-50 transition-colors">
+                                                    <td className="p-4">
                                                         <div className="font-bold text-gray-800">{u.name}</div>
-                                                        <div className="text-gray-500 text-xs">{u.phoneNumber}</div>
+                                                        <div className="text-gray-400 text-xs font-mono">{u.phoneNumber}</div>
                                                     </td>
-                                                    <td className="p-3 text-right">
-                                                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-bold text-xs">{u.currentPoints} điểm</span>
+                                                    <td className="p-4 text-right">
+                                                        <span className="bg-brand-100 text-brand-800 px-3 py-1 rounded-full font-bold text-sm">{u.currentPoints}</span>
                                                     </td>
-                                                    <td className="p-3 text-right text-gray-500 text-xs">
+                                                    <td className="p-4 text-right text-gray-500 text-sm">
                                                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '-'}
                                                     </td>
                                                 </tr>
                                             ))}
                                             {usersList.length === 0 && (
-                                                <tr><td colSpan="3" className="p-6 text-center text-gray-400">Chưa có dữ liệu</td></tr>
+                                                <tr><td colSpan="3" className="p-8 text-center text-gray-400">Chưa có dữ liệu khách hàng</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -370,29 +476,32 @@
         };
 
         const CustomerView = ({ user, showNotify }) => {
-            const [mode, setMode] = useState('login'); // login, register, dashboard
+            const [mode, setMode] = useState('login'); 
             const [phone, setPhone] = useState('');
             const [name, setName] = useState('');
-            const [voucherCode, setVoucherCode] = useState('');
             const [userData, setUserData] = useState(null);
             const [history, setHistory] = useState([]);
             const [isProcessing, setIsProcessing] = useState(false);
 
-            // Fetch history when user is loaded
             useEffect(() => {
                 if (mode === 'dashboard' && userData) {
-                    const unsubscribe = getCollectionRef('transactions')
-                        .where('phoneNumber', '==', userData.phoneNumber) // Note: Requires index in Firestore for complex queries, keeping simple for now
+                    // Update user info live
+                    const userUnsub = getUserRef(userData.phoneNumber).onSnapshot(doc => {
+                        if(doc.exists) setUserData(doc.data());
+                    });
+
+                    // Update history live
+                    const histUnsub = getCollectionRef('transactions')
+                        .where('phoneNumber', '==', userData.phoneNumber)
                         .onSnapshot((snapshot) => {
                             const trans = [];
                             snapshot.forEach(doc => trans.push(doc.data()));
-                            // Sort manually
                             trans.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
                             setHistory(trans);
                         });
-                    return () => unsubscribe();
+                    return () => { userUnsub(); histUnsub(); }
                 }
-            }, [mode, userData]);
+            }, [mode, userData?.phoneNumber]);
 
             const handleRegister = async (e) => {
                 e.preventDefault();
@@ -401,7 +510,7 @@
                     const userRef = getUserRef(phone);
                     const docSnap = await userRef.get();
                     if (docSnap.exists) {
-                        showNotify('Số điện thoại này đã được đăng ký. Vui lòng đăng nhập.', 'error');
+                        showNotify('Số điện thoại này đã đăng ký. Vui lòng đăng nhập.', 'error');
                         setMode('login');
                     } else {
                         const newUser = {
@@ -430,9 +539,9 @@
                     if (docSnap.exists) {
                         setUserData(docSnap.data());
                         setMode('dashboard');
-                        showNotify('Đăng nhập thành công');
+                        showNotify('Xin chào ' + docSnap.data().name);
                     } else {
-                        showNotify('Số điện thoại chưa đăng ký. Vui lòng đăng ký mới.', 'error');
+                        showNotify('Số điện thoại chưa đăng ký.', 'error');
                         setMode('register');
                     }
                 } catch (err) {
@@ -441,91 +550,31 @@
                 setIsProcessing(false);
             };
 
-            const handleRedeemCode = async (e) => {
-                e.preventDefault();
-                if (!voucherCode) return;
-                setIsProcessing(true);
-
-                try {
-                    const code = voucherCode.trim().toUpperCase();
-                    const voucherRef = getVoucherRef(code);
-                    const voucherSnap = await voucherRef.get();
-
-                    if (!voucherSnap.exists) {
-                        throw new Error("Mã thưởng không tồn tại");
-                    }
-
-                    const voucherData = voucherSnap.data();
-                    if (voucherData.status !== 'active') {
-                        throw new Error("Mã này đã được sử dụng");
-                    }
-
-                    // Perform updates
-                    const newPoints = (userData.currentPoints || 0) + voucherData.value;
-                    
-                    // 1. Mark voucher as used
-                    await voucherRef.update({
-                        status: 'used',
-                        usedBy: userData.phoneNumber,
-                        usedAt: new Date().toISOString()
-                    });
-
-                    // 2. Update user points
-                    await getUserRef(userData.phoneNumber).update({
-                        currentPoints: newPoints
-                    });
-
-                    // 3. Log transaction
-                    await getCollectionRef('transactions').add({
-                        phoneNumber: userData.phoneNumber,
-                        amount: voucherData.value,
-                        type: 'earn',
-                        rewardCode: code,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    // Update local state
-                    setUserData({ ...userData, currentPoints: newPoints });
-                    setVoucherCode('');
-                    showNotify(`Thành công! Bạn nhận được ${voucherData.value} điểm.`);
-
-                } catch (error) {
-                    showNotify(error.message, 'error');
-                }
-                setIsProcessing(false);
-            };
-
-            const handleLogout = () => {
-                setUserData(null);
-                setMode('login');
-                setPhone('');
-                setName('');
-            }
-
-            // --- RENDER CUSTOMER VIEWS ---
-
             if (mode === 'login') {
                 return (
-                    <div className="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
-                        <div className="text-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-800">Khách Hàng Đăng Nhập</h3>
-                            <p className="text-gray-500 text-sm">Nhập số điện thoại để tra cứu & tích điểm</p>
+                    <div className="max-w-md mx-auto glass-panel p-8 rounded-3xl animate-fade-in">
+                        <div className="text-center mb-8">
+                            <h3 className="text-2xl font-bold text-brand-900 mb-2 font-serif">Đăng Nhập</h3>
+                            <p className="text-gray-500 text-sm">Nhập số điện thoại để xem thẻ thành viên</p>
                         </div>
-                        <form onSubmit={handleLogin} className="space-y-4">
-                            <input 
-                                type="tel" 
-                                value={phone}
-                                onChange={e => setPhone(e.target.value)}
-                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder="Số điện thoại của bạn"
-                                required
-                            />
-                            <button disabled={isProcessing} type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            <div className="relative">
+                                <i className="fas fa-phone absolute left-4 top-4 text-gray-400"></i>
+                                <input 
+                                    type="tel" 
+                                    value={phone}
+                                    onChange={e => setPhone(e.target.value)}
+                                    className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none bg-white/70"
+                                    placeholder="Số điện thoại của bạn"
+                                    required
+                                />
+                            </div>
+                            <button disabled={isProcessing} type="submit" className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
                                 {isProcessing ? 'Đang kiểm tra...' : 'Tiếp Tục'}
                             </button>
                         </form>
-                        <div className="mt-4 text-center">
-                            <button onClick={() => setMode('register')} className="text-blue-600 text-sm hover:underline">Chưa có tài khoản? Đăng ký ngay</button>
+                        <div className="mt-6 text-center border-t border-gray-200 pt-4">
+                            <button onClick={() => setMode('register')} className="text-brand-600 font-bold hover:underline">Đăng ký thành viên mới</button>
                         </div>
                     </div>
                 );
@@ -533,115 +582,132 @@
 
             if (mode === 'register') {
                 return (
-                    <div className="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
-                        <div className="text-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-800">Đăng Ký Thành Viên</h3>
-                            <p className="text-gray-500 text-sm">Nhập thông tin để tạo thẻ thành viên mới</p>
+                    <div className="max-w-md mx-auto glass-panel p-8 rounded-3xl animate-fade-in">
+                        <div className="text-center mb-8">
+                            <h3 className="text-2xl font-bold text-brand-900 mb-2 font-serif">Đăng Ký Mới</h3>
+                            <p className="text-gray-500 text-sm">Trở thành thành viên của Lá Mây</p>
                         </div>
-                        <form onSubmit={handleRegister} className="space-y-4">
+                        <form onSubmit={handleRegister} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Họ và Tên</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Họ tên</label>
                                 <input 
                                     type="text" 
                                     value={name}
                                     onChange={e => setName(e.target.value)}
-                                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none bg-white/70"
                                     placeholder="VD: Nguyễn Văn A"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Số điện thoại</label>
                                 <input 
                                     type="tel" 
                                     value={phone}
                                     onChange={e => setPhone(e.target.value)}
-                                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none bg-white/70"
                                     placeholder="0912..."
                                     required
                                 />
                             </div>
-                            <button disabled={isProcessing} type="submit" className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition shadow-lg shadow-green-200">
-                                {isProcessing ? 'Đang xử lý...' : 'Hoàn Tất Đăng Ký'}
+                            <button disabled={isProcessing} type="submit" className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
+                                {isProcessing ? 'Đang xử lý...' : 'Hoàn Tất'}
                             </button>
                         </form>
-                        <div className="mt-4 text-center">
-                            <button onClick={() => setMode('login')} className="text-gray-500 text-sm hover:text-gray-700">Đã có tài khoản? Quay lại</button>
+                        <div className="mt-6 text-center">
+                            <button onClick={() => setMode('login')} className="text-gray-500 text-sm hover:text-gray-700">Quay lại đăng nhập</button>
                         </div>
                     </div>
                 );
             }
 
-            // Dashboard View
+            // Customer Dashboard
             return (
-                <div className="space-y-6 animate-fade-in">
-                    {/* Header Info */}
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg flex justify-between items-start relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl"><i className="fas fa-wallet"></i></div>
-                        <div className="relative z-10">
-                            <p className="text-blue-200 text-xs uppercase tracking-wider mb-1">Thẻ Thành Viên</p>
-                            <h2 className="text-2xl font-bold">{userData.name}</h2>
-                            <p className="text-blue-200 font-mono text-sm mb-4">{userData.phoneNumber}</p>
-                            <div className="flex items-end gap-2">
-                                <span className="text-5xl font-bold">{userData.currentPoints}</span>
-                                <span className="text-blue-200 mb-1 font-medium">điểm</span>
+                <div className="max-w-lg mx-auto space-y-8 animate-fade-in">
+                    {/* Membership Card */}
+                    <div className="relative bg-gradient-to-br from-brand-800 to-brand-600 rounded-3xl p-8 text-white shadow-2xl overflow-hidden min-h-[220px] flex flex-col justify-between transform transition hover:scale-[1.02]">
+                        {/* Decorative Circles */}
+                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-400 opacity-20 rounded-full blur-xl"></div>
+                        
+                        <div className="flex justify-between items-start relative z-10">
+                            <div>
+                                <h2 className="text-xl font-serif tracking-wide opacity-90">Lá Mây Member</h2>
+                                <p className="text-brand-100 text-xs tracking-widest mt-1">LOYALTY CARD</p>
+                            </div>
+                            <i className="fas fa-leaf text-4xl opacity-20"></i>
+                        </div>
+
+                        <div className="relative z-10 mt-6">
+                            <div className="flex items-end gap-3">
+                                <h1 className="text-6xl font-bold">{userData.currentPoints}</h1>
+                                <span className="text-xl font-medium mb-2 text-brand-200">điểm</span>
                             </div>
                         </div>
-                        <button onClick={handleLogout} className="relative z-10 bg-white/20 hover:bg-white/30 p-2 rounded-lg backdrop-blur-sm transition">
-                            <i className="fas fa-sign-out-alt"></i>
-                        </button>
+
+                        <div className="flex justify-between items-end relative z-10 mt-4">
+                            <div>
+                                <p className="text-brand-200 text-xs uppercase">Chủ thẻ</p>
+                                <p className="font-bold text-lg tracking-wide">{userData.name}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-brand-200 text-xs font-mono">{userData.phoneNumber}</p>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Redeem Section */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <i className="fas fa-qrcode text-blue-600"></i> Nạp Điểm Thưởng
-                        </h3>
-                        <form onSubmit={handleRedeemCode} className="flex gap-2">
-                            <input 
-                                type="text" 
-                                value={voucherCode}
-                                onChange={e => setVoucherCode(e.target.value)}
-                                className="flex-1 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none uppercase font-bold text-gray-700 placeholder-gray-400"
-                                placeholder="Nhập mã thưởng (VD: GIFT-1234)"
-                                required
+                    {/* QR Code Section */}
+                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-brand-100 text-center relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
+                        <h3 className="text-lg font-bold text-brand-900 mb-2">Mã Thành Viên Của Bạn</h3>
+                        <p className="text-gray-500 text-xs mb-4">Đưa mã này cho nhân viên để tích điểm</p>
+                        
+                        <div className="bg-white p-4 inline-block rounded-xl border-2 border-dashed border-brand-200">
+                             <img 
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${userData.phoneNumber}`} 
+                                alt="QR Code" 
+                                className="w-40 h-40"
                             />
-                            <button disabled={isProcessing} type="submit" className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">
-                                {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Nạp'}
-                            </button>
-                        </form>
-                        <p className="text-xs text-gray-400 mt-2 ml-1">* Nhập mã do quản trị viên cung cấp để cộng điểm.</p>
+                        </div>
+                        <p className="mt-3 font-mono font-bold text-brand-800 text-lg tracking-wider">{userData.phoneNumber}</p>
                     </div>
 
                     {/* Transaction History */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">Lịch sử giao dịch</h3>
-                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                    <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-brand-50">
+                        <h3 className="text-lg font-bold text-brand-900 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
+                            <i className="fas fa-history text-brand-500"></i> Lịch sử giao dịch
+                        </h3>
+                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
                             {history.length > 0 ? history.map((t, idx) => (
-                                <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                                            <i className="fas fa-arrow-down"></i>
+                                <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-50 hover:bg-brand-50 transition">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'use' ? 'bg-orange-100 text-orange-600' : 'bg-brand-100 text-brand-600'}`}>
+                                            <i className={`fas ${t.type === 'use' ? 'fa-minus' : 'fa-plus'}`}></i>
                                         </div>
                                         <div>
-                                            <p className="font-bold text-gray-800 text-sm">Nạp điểm thưởng</p>
-                                            <p className="text-xs text-gray-500 font-mono">Code: {t.rewardCode}</p>
+                                            <p className="font-bold text-gray-800 text-sm">{t.note || (t.type === 'earn_direct' ? 'Tích điểm tại quầy' : 'Giao dịch')}</p>
+                                            <p className="text-xs text-gray-400">
+                                                {t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleString('vi-VN') : 'Vừa xong'}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-green-600">+{t.amount}</p>
-                                        <p className="text-xs text-gray-400">
-                                            {t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleDateString('vi-VN') : 'Vừa xong'}
-                                        </p>
+                                    <div className={`font-bold text-lg ${t.type === 'use' ? 'text-orange-500' : 'text-brand-600'}`}>
+                                        {t.type === 'use' ? '-' : '+'}{t.amount}
                                     </div>
                                 </div>
                             )) : (
-                                <div className="text-center py-8 text-gray-400">
-                                    <i className="fas fa-history text-3xl mb-2 opacity-50"></i>
-                                    <p className="text-sm">Chưa có giao dịch nào</p>
+                                <div className="text-center py-10 text-gray-400">
+                                    <i className="fas fa-leaf text-4xl mb-3 opacity-30"></i>
+                                    <p className="text-sm">Bạn chưa có giao dịch nào.</p>
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    <div className="text-center pb-4">
+                        <button onClick={() => {setUserData(null); setMode('login');}} className="text-gray-400 text-sm hover:text-red-500 transition flex items-center justify-center gap-2 mx-auto">
+                            <i className="fas fa-sign-out-alt"></i> Đăng xuất
+                        </button>
                     </div>
                 </div>
             );
