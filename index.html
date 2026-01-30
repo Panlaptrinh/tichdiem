@@ -99,7 +99,7 @@
         const appId = window.__app_id || 'lamay-loyalty-system'; 
 
         // Logo URL from user upload
-        const LOGO_URL = "logolamay.png";
+        const LOGO_URL = "623014100_122158871402659550_3561505499799607316_n.jpg";
 
         // --- Helpers ---
         const getCollectionRef = (name) => {
@@ -107,6 +107,16 @@
         };
         const getUserRef = (phone) => {
             return getCollectionRef('users').doc(phone);
+        };
+        const getVoucherRef = (code) => {
+            return getCollectionRef('vouchers').doc(code);
+        };
+
+        const generateCode = () => {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let result = '';
+            for (let i = 0; i < 4; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+            return `LAMAY-${result}`;
         };
 
         // --- Components ---
@@ -221,7 +231,7 @@
                             <i className="fas fa-user"></i>
                         </div>
                         <h3 className="text-2xl font-bold text-brand-900 mb-2">Khách Hàng</h3>
-                        <p className="text-gray-600 text-sm">Kiểm tra điểm tích lũy, lịch sử giao dịch và mã thành viên.</p>
+                        <p className="text-gray-600 text-sm">Nhập mã thưởng, kiểm tra điểm và lịch sử giao dịch.</p>
                     </button>
 
                     <button 
@@ -233,17 +243,16 @@
                             <i className="fas fa-store"></i>
                         </div>
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">Cửa Hàng (Admin)</h3>
-                        <p className="text-gray-600 text-sm">Tích điểm trực tiếp cho khách và quản lý thành viên.</p>
+                        <p className="text-gray-600 text-sm">Tạo mã thưởng cho đơn hàng online và quản lý.</p>
                     </button>
                 </div>
             </div>
         );
 
         const AdminView = ({ user, showNotify }) => {
-            const [activeTab, setActiveTab] = useState('add-points'); 
-            const [pointsToAdd, setPointsToAdd] = useState('');
-            const [searchPhone, setSearchPhone] = useState('');
-            const [customerInfo, setCustomerInfo] = useState(null);
+            const [activeTab, setActiveTab] = useState('create-code'); // Default tab
+            const [pointValue, setPointValue] = useState('');
+            const [generatedCode, setGeneratedCode] = useState('');
             const [usersList, setUsersList] = useState([]);
             const [pin, setPin] = useState('');
             const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -259,70 +268,25 @@
                 return () => unsubscribe();
             }, [activeTab, isAuthenticated]);
 
-            // Tìm khách hàng
-            const handleSearchCustomer = async (e) => {
+            const handleCreateCode = async (e) => {
                 e.preventDefault();
-                if(!searchPhone) return;
-                setIsSubmitting(true);
-                try {
-                    const doc = await getUserRef(searchPhone).get();
-                    if(doc.exists) {
-                        setCustomerInfo(doc.data());
-                        showNotify("Đã tìm thấy khách hàng", "success");
-                    } else {
-                        setCustomerInfo(null);
-                        // Tự động gợi ý tạo mới nếu muốn (nhưng ở đây báo lỗi cho đơn giản)
-                        if(confirm("Khách hàng này chưa tồn tại. Bạn có muốn tạo mới ngay không?")) {
-                            const name = prompt("Nhập tên khách hàng:");
-                            if(name) {
-                                const newUser = {
-                                    name: name,
-                                    phoneNumber: searchPhone,
-                                    currentPoints: 0,
-                                    createdAt: new Date().toISOString()
-                                };
-                                await getUserRef(searchPhone).set(newUser);
-                                setCustomerInfo(newUser);
-                                showNotify("Đã tạo khách hàng mới!", "success");
-                            }
-                        }
-                    }
-                } catch(err) {
-                    showNotify("Lỗi: " + err.message, "error");
-                }
-                setIsSubmitting(false);
-            }
-
-            const handleDirectAddPoints = async (e) => {
-                e.preventDefault();
-                if (!pointsToAdd || parseInt(pointsToAdd) <= 0 || !customerInfo) return;
+                if (!pointValue || parseInt(pointValue) <= 0) return showNotify("Vui lòng nhập số điểm hợp lệ", "error");
 
                 setIsSubmitting(true);
                 try {
-                    const amount = parseInt(pointsToAdd);
-                    const newTotal = (customerInfo.currentPoints || 0) + amount;
+                    const newCode = generateCode();
+                    const voucherData = {
+                        code: newCode,
+                        value: parseInt(pointValue),
+                        status: 'active', // active, used
+                        createdBy: 'admin',
+                        createdAt: new Date().toISOString()
+                    };
 
-                    // 1. Update User Points
-                    await getUserRef(customerInfo.phoneNumber).update({
-                        currentPoints: newTotal,
-                        lastTransaction: new Date().toISOString()
-                    });
-
-                    // 2. Create Transaction Record
-                    await getCollectionRef('transactions').add({
-                        phoneNumber: customerInfo.phoneNumber,
-                        amount: amount,
-                        type: 'earn_direct',
-                        note: 'Tích điểm tại quầy',
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    showNotify(`Đã cộng ${amount} điểm cho ${customerInfo.name}!`, "success");
-                    
-                    // Reset
-                    setPointsToAdd('');
-                    setCustomerInfo({ ...customerInfo, currentPoints: newTotal }); // Update UI locally
-
+                    await getVoucherRef(newCode).set(voucherData);
+                    setGeneratedCode(newCode);
+                    showNotify("Tạo mã thành công!", "success");
+                    setPointValue('');
                 } catch (error) {
                     showNotify("Lỗi: " + error.message, "error");
                 }
@@ -361,10 +325,10 @@
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in min-h-[500px] border border-brand-100">
                     <div className="flex border-b border-gray-100">
                         <button 
-                            onClick={() => setActiveTab('add-points')}
-                            className={`flex-1 py-5 font-bold text-sm transition-colors ${activeTab === 'add-points' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                            onClick={() => setActiveTab('create-code')}
+                            className={`flex-1 py-5 font-bold text-sm transition-colors ${activeTab === 'create-code' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
                         >
-                            <i className="fas fa-calculator mr-2"></i>Tích Điểm Tại Quầy
+                            <i className="fas fa-qrcode mr-2"></i>Tạo Mã Thưởng
                         </button>
                         <button 
                             onClick={() => setActiveTab('list')}
@@ -375,60 +339,49 @@
                     </div>
 
                     <div className="p-8 bg-gray-50/50 h-full">
-                        {activeTab === 'add-points' && (
+                        {activeTab === 'create-code' && (
                             <div className="max-w-lg mx-auto">
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Tìm khách hàng (SĐT)</label>
-                                    <form onSubmit={handleSearchCustomer} className="flex gap-2">
-                                        <input 
-                                            type="tel"
-                                            value={searchPhone}
-                                            onChange={e => setSearchPhone(e.target.value)}
-                                            className="flex-1 p-3 border rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-lg font-mono text-brand-900"
-                                            placeholder="Nhập số điện thoại..."
-                                            autoFocus
-                                        />
-                                        <button type="submit" className="bg-gray-800 text-white px-6 rounded-xl hover:bg-black transition">
-                                            <i className="fas fa-search"></i>
-                                        </button>
-                                    </form>
+                                <div className="text-center mb-8">
+                                    <h3 className="text-xl font-bold text-gray-800">Phát Hành Mã Điểm</h3>
+                                    <p className="text-sm text-gray-500">Tạo mã để gửi cho khách hàng nhập (Online)</p>
                                 </div>
 
-                                {customerInfo && (
-                                    <div className="bg-white p-8 rounded-2xl shadow-lg border-t-4 border-brand-500 animate-fade-in">
-                                        <div className="text-center mb-6">
-                                            <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 text-2xl mx-auto mb-3">
-                                                <i className="fas fa-user-check"></i>
-                                            </div>
-                                            <h3 className="text-xl font-bold text-gray-900">{customerInfo.name}</h3>
-                                            <p className="text-gray-500 font-mono">{customerInfo.phoneNumber}</p>
-                                            <div className="mt-4 inline-block bg-brand-50 px-4 py-2 rounded-lg border border-brand-100">
-                                                <span className="text-gray-600 text-sm">Điểm hiện tại:</span>
-                                                <span className="ml-2 text-2xl font-bold text-brand-700">{customerInfo.currentPoints}</span>
+                                <div className="bg-white p-8 rounded-2xl shadow-lg border-t-4 border-brand-500 animate-fade-in">
+                                    <form onSubmit={handleCreateCode} className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Giá trị điểm thưởng</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type="number" 
+                                                    value={pointValue}
+                                                    onChange={e => setPointValue(e.target.value)}
+                                                    className="w-full p-4 pl-12 border rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-xl font-bold text-brand-700"
+                                                    placeholder="VD: 50"
+                                                    required
+                                                />
+                                                <div className="absolute left-4 top-4 text-brand-400 text-xl">
+                                                    <i className="fas fa-star"></i>
+                                                </div>
+                                                <span className="absolute right-4 top-5 text-gray-400 text-sm font-bold">điểm</span>
                                             </div>
                                         </div>
+                                        <button disabled={isSubmitting} type="submit" className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-xl font-bold hover:shadow-lg transition transform hover:-translate-y-1">
+                                            {isSubmitting ? 'Đang tạo...' : 'Tạo Mã Ngay'}
+                                        </button>
+                                    </form>
 
-                                        <form onSubmit={handleDirectAddPoints} className="space-y-4">
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">Nhập số điểm muốn cộng</label>
-                                                <div className="relative">
-                                                    <input 
-                                                        type="number" 
-                                                        value={pointsToAdd}
-                                                        onChange={e => setPointsToAdd(e.target.value)}
-                                                        className="w-full p-4 pl-4 border rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-xl font-bold text-brand-700"
-                                                        placeholder="0"
-                                                        required
-                                                    />
-                                                    <span className="absolute right-4 top-4 text-gray-400 font-bold">điểm</span>
-                                                </div>
+                                    {generatedCode && (
+                                        <div className="mt-8 bg-brand-50 border border-brand-200 rounded-xl p-6 text-center animate-fade-in relative overflow-hidden">
+                                            <div className="absolute top-0 left-0 w-full h-1 bg-brand-300"></div>
+                                            <p className="text-brand-800 text-sm mb-3 font-medium uppercase tracking-wider">Mã thưởng vừa tạo</p>
+                                            <div className="bg-white border-2 border-dashed border-brand-400 rounded-lg p-4 mb-4 cursor-pointer hover:bg-gray-50 transition group" onClick={() => {navigator.clipboard.writeText(generatedCode); showNotify('Đã sao chép mã!');}}>
+                                                <span className="text-3xl font-black text-brand-700 tracking-wider font-mono select-all">{generatedCode}</span>
+                                                <div className="text-xs text-gray-400 mt-1 group-hover:text-brand-500"><i className="fas fa-copy mr-1"></i> Chạm để sao chép</div>
                                             </div>
-                                            <button disabled={isSubmitting} type="submit" className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-xl font-bold hover:shadow-lg transition transform hover:-translate-y-1">
-                                                {isSubmitting ? 'Đang xử lý...' : 'Xác Nhận Cộng Điểm'}
-                                            </button>
-                                        </form>
-                                    </div>
-                                )}
+                                            <p className="text-xs text-gray-500">Hãy gửi mã này cho khách hàng (qua Chat, Email...).<br/>Khách sẽ tự nhập mã để nhận điểm.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
@@ -481,6 +434,7 @@
             const [name, setName] = useState('');
             const [userData, setUserData] = useState(null);
             const [history, setHistory] = useState([]);
+            const [voucherCode, setVoucherCode] = useState(''); // State for inputting code
             const [isProcessing, setIsProcessing] = useState(false);
 
             useEffect(() => {
@@ -546,6 +500,59 @@
                     }
                 } catch (err) {
                     showNotify('Lỗi: ' + err.message, 'error');
+                }
+                setIsProcessing(false);
+            };
+
+            const handleRedeemCode = async (e) => {
+                e.preventDefault();
+                if (!voucherCode) return;
+                setIsProcessing(true);
+
+                try {
+                    const code = voucherCode.trim().toUpperCase();
+                    const voucherRef = getVoucherRef(code);
+                    const voucherSnap = await voucherRef.get();
+
+                    if (!voucherSnap.exists) {
+                        throw new Error("Mã không hợp lệ hoặc không tồn tại");
+                    }
+
+                    const voucherData = voucherSnap.data();
+                    if (voucherData.status !== 'active') {
+                        throw new Error("Mã này đã được sử dụng");
+                    }
+
+                    // Updates
+                    const newPoints = (userData.currentPoints || 0) + voucherData.value;
+                    
+                    // 1. Mark used
+                    await voucherRef.update({
+                        status: 'used',
+                        usedBy: userData.phoneNumber,
+                        usedAt: new Date().toISOString()
+                    });
+
+                    // 2. Add points
+                    await getUserRef(userData.phoneNumber).update({
+                        currentPoints: newPoints
+                    });
+
+                    // 3. Log transaction
+                    await getCollectionRef('transactions').add({
+                        phoneNumber: userData.phoneNumber,
+                        amount: voucherData.value,
+                        type: 'earn_code',
+                        note: 'Nhập mã thưởng',
+                        rewardCode: code,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    setVoucherCode('');
+                    showNotify(`Thành công! Cộng ${voucherData.value} điểm.`, 'success');
+
+                } catch (error) {
+                    showNotify(error.message, 'error');
                 }
                 setIsProcessing(false);
             };
@@ -656,20 +663,25 @@
                         </div>
                     </div>
 
-                    {/* QR Code Section */}
-                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-brand-100 text-center relative overflow-hidden">
+                    {/* REDEEM CODE SECTION (NEWLY ADDED) */}
+                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-brand-100 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
-                        <h3 className="text-lg font-bold text-brand-900 mb-2">Mã Thành Viên Của Bạn</h3>
-                        <p className="text-gray-500 text-xs mb-4">Đưa mã này cho nhân viên để tích điểm</p>
-                        
-                        <div className="bg-white p-4 inline-block rounded-xl border-2 border-dashed border-brand-200">
-                             <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${userData.phoneNumber}`} 
-                                alt="QR Code" 
-                                className="w-40 h-40"
+                        <h3 className="text-lg font-bold text-brand-900 mb-4 flex items-center gap-2">
+                            <i className="fas fa-gift text-brand-500"></i> Nhập Mã Thưởng
+                        </h3>
+                        <form onSubmit={handleRedeemCode} className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={voucherCode}
+                                onChange={e => setVoucherCode(e.target.value)}
+                                className="flex-1 p-3 border border-brand-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none uppercase font-bold text-brand-800 placeholder-brand-300"
+                                placeholder="VD: LAMAY-X1Y2"
                             />
-                        </div>
-                        <p className="mt-3 font-mono font-bold text-brand-800 text-lg tracking-wider">{userData.phoneNumber}</p>
+                            <button disabled={isProcessing} type="submit" className="bg-brand-600 text-white px-6 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
+                                {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Nạp'}
+                            </button>
+                        </form>
+                        <p className="text-xs text-gray-500 mt-2 ml-1">* Nhập mã in trên hóa đơn hoặc nhận được qua tin nhắn.</p>
                     </div>
 
                     {/* Transaction History */}
