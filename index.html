@@ -20,6 +20,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
 
+    <!-- Excel Export Library (SheetJS) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
     <!-- Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
@@ -34,6 +37,9 @@
                         brand: {
                             50: '#ecfdf5',
                             100: '#d1fae5',
+                            200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#34d399',
                             500: '#10b981',
                             600: '#059669', // Emerald 600
                             700: '#047857',
@@ -66,11 +72,11 @@
         .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* Modal Overlay */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body>
@@ -80,26 +86,38 @@
         const { useState, useEffect } = React;
         
         // --- Firebase Configuration ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDLQBLROJ1ABogfjll-9ucznO3tchy-4aE",
-            authDomain: "shop-tich-diem.firebaseapp.com",
-            projectId: "shop-tich-diem",
-            storageBucket: "shop-tich-diem.firebasestorage.app",
-            messagingSenderId: "767439185361",
-            appId: "1:767439185361:web:a33131993aa244f4cc2cf0",
-            measurementId: "G-3JZ18BHBD5"
-        };
+        // Prioritize environment config if available to fix "auth/configuration-not-found"
+        let firebaseConfig;
+        if (typeof window.__firebase_config !== 'undefined') {
+             try {
+                firebaseConfig = JSON.parse(window.__firebase_config);
+             } catch (e) {
+                console.error("Error parsing __firebase_config", e);
+             }
+        }
+        
+        if (!firebaseConfig) {
+             // Fallback to the hardcoded config
+             firebaseConfig = {
+                apiKey: "AIzaSyDLQBLROJ1ABogfjll-9ucznO3tchy-4aE",
+                authDomain: "shop-tich-diem.firebaseapp.com",
+                projectId: "shop-tich-diem",
+                storageBucket: "shop-tich-diem.firebasestorage.app",
+                messagingSenderId: "767439185361",
+                appId: "1:767439185361:web:a33131993aa244f4cc2cf0",
+                measurementId: "G-3JZ18BHBD5"
+            };
+        }
 
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const auth = firebase.auth();
         const db = firebase.firestore();
-        // Using a new appId namespace to separate from old data if needed, or keep same to preserve users
         const appId = window.__app_id || 'lamay-loyalty-system'; 
 
-        // Logo URL from user upload
-        const LOGO_URL = "logolamay.png";
+        // Logo URL fallback
+        const LOGO_URL = "https://cdn-icons-png.flaticon.com/512/1598/1598431.png"; // Placeholder leaf icon
 
         // --- Helpers ---
         const getCollectionRef = (name) => {
@@ -137,9 +155,12 @@
         };
 
         const BrandLogo = ({ size = "md" }) => {
-            const dims = size === "lg" ? "h-24" : size === "md" ? "h-12" : "h-8";
+            // Using icon instead of broken image for demo stability
+            const fontSize = size === "lg" ? "text-6xl" : size === "md" ? "text-4xl" : "text-2xl";
             return (
-                <img src={LOGO_URL} alt="Lá Mây Logo" className={`${dims} object-contain drop-shadow-sm hover:scale-105 transition duration-300`} />
+                <div className={`${fontSize} text-brand-600`}>
+                     <i className="fas fa-leaf"></i>
+                </div>
             );
         };
 
@@ -191,6 +212,7 @@
                         <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('home')}>
                                 <BrandLogo size="md" />
+                                <span className="font-serif font-bold text-xl text-brand-900 hidden md:block">Lá Mây</span>
                             </div>
                             {view !== 'home' && (
                                 <button onClick={() => setView('home')} className="px-4 py-2 rounded-full text-sm font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 transition flex items-center gap-2">
@@ -243,20 +265,28 @@
                             <i className="fas fa-store"></i>
                         </div>
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">Cửa Hàng (Admin)</h3>
-                        <p className="text-gray-600 text-sm">Tạo mã thưởng cho đơn hàng online và quản lý.</p>
+                        <p className="text-gray-600 text-sm">Tạo mã thưởng, chỉnh sửa điểm và xuất báo cáo.</p>
                     </button>
                 </div>
             </div>
         );
 
+        // --- ADMIN VIEW UPDATE ---
         const AdminView = ({ user, showNotify }) => {
-            const [activeTab, setActiveTab] = useState('create-code'); // Default tab
+            const [activeTab, setActiveTab] = useState('create-code');
             const [pointValue, setPointValue] = useState('');
             const [generatedCode, setGeneratedCode] = useState('');
             const [usersList, setUsersList] = useState([]);
             const [pin, setPin] = useState('');
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
+            
+            // Adjust Points Modal State
+            const [showAdjustModal, setShowAdjustModal] = useState(false);
+            const [adjustTargetUser, setAdjustTargetUser] = useState(null);
+            const [adjustAmount, setAdjustAmount] = useState('');
+            const [adjustType, setAdjustType] = useState('add'); // 'add' or 'sub'
+            const [adjustNote, setAdjustNote] = useState('');
 
             // Fetch users list
             useEffect(() => {
@@ -293,6 +323,78 @@
                 setIsSubmitting(false);
             };
 
+            // --- EXPORT EXCEL FUNCTION ---
+            const handleExportExcel = () => {
+                if (usersList.length === 0) {
+                    showNotify("Chưa có dữ liệu để xuất!", "error");
+                    return;
+                }
+                
+                // Format data for Excel
+                const dataToExport = usersList.map(user => ({
+                    "Họ tên": user.name,
+                    "Số điện thoại": user.phoneNumber,
+                    "Điểm hiện tại": user.currentPoints,
+                    "Ngày tham gia": user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : ''
+                }));
+
+                // Create worksheet
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "KhachHang");
+                
+                // Save file
+                XLSX.writeFile(wb, `DanhSachKhachHang_LaMay_${new Date().toISOString().slice(0,10)}.xlsx`);
+                showNotify("Đang tải xuống file Excel...", "success");
+            };
+
+            // --- DIRECT ADJUSTMENT FUNCTIONS ---
+            const openAdjustModal = (user) => {
+                setAdjustTargetUser(user);
+                setAdjustAmount('');
+                setAdjustType('add');
+                setAdjustNote('');
+                setShowAdjustModal(true);
+            };
+
+            const handleDirectAdjustment = async (e) => {
+                e.preventDefault();
+                if (!adjustAmount || parseInt(adjustAmount) <= 0) return showNotify("Nhập số điểm hợp lệ", "error");
+                if (!adjustTargetUser) return;
+
+                setIsSubmitting(true);
+                try {
+                    const amount = parseInt(adjustAmount);
+                    const currentPoints = adjustTargetUser.currentPoints || 0;
+                    let newPoints = adjustType === 'add' ? currentPoints + amount : currentPoints - amount;
+                    
+                    if (newPoints < 0) newPoints = 0; // Prevent negative points
+
+                    // 1. Update User Points
+                    await getUserRef(adjustTargetUser.phoneNumber).update({
+                        currentPoints: newPoints
+                    });
+
+                    // 2. Add Transaction Record
+                    await getCollectionRef('transactions').add({
+                        phoneNumber: adjustTargetUser.phoneNumber,
+                        amount: amount,
+                        type: adjustType === 'add' ? 'earn_direct' : 'use_direct',
+                        note: adjustNote || (adjustType === 'add' ? 'Admin cộng điểm' : 'Admin trừ điểm'),
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        performedBy: 'admin'
+                    });
+
+                    showNotify(`Đã ${adjustType === 'add' ? 'cộng' : 'trừ'} ${amount} điểm cho ${adjustTargetUser.name}`, "success");
+                    setShowAdjustModal(false);
+                } catch (error) {
+                    console.error(error);
+                    showNotify("Lỗi cập nhật: " + error.message, "error");
+                }
+                setIsSubmitting(false);
+            };
+
+            // Login Screen
             if (!isAuthenticated) {
                 return (
                     <div className="max-w-md mx-auto glass-panel p-10 rounded-3xl text-center animate-fade-in mt-10">
@@ -322,17 +424,17 @@
             }
 
             return (
-                <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in min-h-[500px] border border-brand-100">
-                    <div className="flex border-b border-gray-100">
+                <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in min-h-[500px] border border-brand-100 relative">
+                    <div className="flex border-b border-gray-100 flex-wrap">
                         <button 
                             onClick={() => setActiveTab('create-code')}
-                            className={`flex-1 py-5 font-bold text-sm transition-colors ${activeTab === 'create-code' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                            className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'create-code' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
                         >
                             <i className="fas fa-qrcode mr-2"></i>Tạo Mã Thưởng
                         </button>
                         <button 
                             onClick={() => setActiveTab('list')}
-                            className={`flex-1 py-5 font-bold text-sm transition-colors ${activeTab === 'list' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                            className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'list' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
                         >
                             <i className="fas fa-users mr-2"></i>Danh Sách Khách
                         </button>
@@ -386,18 +488,24 @@
                         )}
 
                         {activeTab === 'list' && (
-                            <div>
+                            <div className="animate-fade-in">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="text-xl font-bold text-brand-900">Danh sách thành viên ({usersList.length})</h3>
-                                    <button className="text-sm text-brand-600 hover:underline"><i className="fas fa-file-export mr-1"></i> Xuất Excel</button>
+                                    <button 
+                                        onClick={handleExportExcel}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition flex items-center shadow-md"
+                                    >
+                                        <i className="fas fa-file-excel mr-2"></i> Xuất Excel
+                                    </button>
                                 </div>
-                                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                                    <table className="w-full text-left">
+                                <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+                                    <table className="w-full text-left min-w-[600px]">
                                         <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
                                             <tr>
                                                 <th className="p-4">Khách hàng</th>
-                                                <th className="p-4 text-right">Điểm tích lũy</th>
+                                                <th className="p-4 text-center">Điểm tích lũy</th>
                                                 <th className="p-4 text-right">Ngày tham gia</th>
+                                                <th className="p-4 text-center">Thao tác</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
@@ -407,16 +515,24 @@
                                                         <div className="font-bold text-gray-800">{u.name}</div>
                                                         <div className="text-gray-400 text-xs font-mono">{u.phoneNumber}</div>
                                                     </td>
-                                                    <td className="p-4 text-right">
+                                                    <td className="p-4 text-center">
                                                         <span className="bg-brand-100 text-brand-800 px-3 py-1 rounded-full font-bold text-sm">{u.currentPoints}</span>
                                                     </td>
                                                     <td className="p-4 text-right text-gray-500 text-sm">
                                                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '-'}
                                                     </td>
+                                                    <td className="p-4 text-center">
+                                                        <button 
+                                                            onClick={() => openAdjustModal(u)}
+                                                            className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                                                        >
+                                                            <i className="fas fa-edit mr-1"></i> Chỉnh điểm
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                             {usersList.length === 0 && (
-                                                <tr><td colSpan="3" className="p-8 text-center text-gray-400">Chưa có dữ liệu khách hàng</td></tr>
+                                                <tr><td colSpan="4" className="p-8 text-center text-gray-400">Chưa có dữ liệu khách hàng</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -424,6 +540,73 @@
                             </div>
                         )}
                     </div>
+
+                    {/* MODAL CHỈNH ĐIỂM */}
+                    {showAdjustModal && adjustTargetUser && (
+                        <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 animate-fade-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                                <div className="bg-brand-600 p-4 text-white flex justify-between items-center">
+                                    <h3 className="font-bold">Chỉnh sửa điểm</h3>
+                                    <button onClick={() => setShowAdjustModal(false)} className="hover:text-brand-200"><i className="fas fa-times"></i></button>
+                                </div>
+                                <div className="p-6">
+                                    <p className="text-sm text-gray-500 mb-4">Khách hàng: <span className="font-bold text-gray-800">{adjustTargetUser.name}</span></p>
+                                    
+                                    <form onSubmit={handleDirectAdjustment} className="space-y-4">
+                                        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setAdjustType('add')}
+                                                className={`flex-1 py-2 rounded-md font-bold text-sm transition ${adjustType === 'add' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500'}`}
+                                            >
+                                                <i className="fas fa-plus mr-1"></i> Cộng thêm
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setAdjustType('sub')}
+                                                className={`flex-1 py-2 rounded-md font-bold text-sm transition ${adjustType === 'sub' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}
+                                            >
+                                                <i className="fas fa-minus mr-1"></i> Trừ bớt
+                                            </button>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Số điểm</label>
+                                            <input 
+                                                type="number" 
+                                                value={adjustAmount}
+                                                onChange={e => setAdjustAmount(e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-bold text-lg"
+                                                placeholder="0"
+                                                autoFocus
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Lý do / Ghi chú</label>
+                                            <input 
+                                                type="text" 
+                                                value={adjustNote}
+                                                onChange={e => setAdjustNote(e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                                                placeholder={adjustType === 'add' ? "VD: Thưởng thêm, Bù đơn cũ..." : "VD: Đổi quà, Sai sót..."}
+                                            />
+                                        </div>
+
+                                        <div className="pt-2">
+                                            <button 
+                                                type="submit" 
+                                                disabled={isSubmitting}
+                                                className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition ${adjustType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-500 hover:bg-orange-600'}`}
+                                            >
+                                                {isSubmitting ? 'Đang lưu...' : 'Xác Nhận'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -434,7 +617,7 @@
             const [name, setName] = useState('');
             const [userData, setUserData] = useState(null);
             const [history, setHistory] = useState([]);
-            const [voucherCode, setVoucherCode] = useState(''); // State for inputting code
+            const [voucherCode, setVoucherCode] = useState(''); 
             const [isProcessing, setIsProcessing] = useState(false);
 
             useEffect(() => {
@@ -633,7 +816,6 @@
                 <div className="max-w-lg mx-auto space-y-8 animate-fade-in">
                     {/* Membership Card */}
                     <div className="relative bg-gradient-to-br from-brand-800 to-brand-600 rounded-3xl p-8 text-white shadow-2xl overflow-hidden min-h-[220px] flex flex-col justify-between transform transition hover:scale-[1.02]">
-                        {/* Decorative Circles */}
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
                         <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-400 opacity-20 rounded-full blur-xl"></div>
                         
@@ -663,7 +845,7 @@
                         </div>
                     </div>
 
-                    {/* REDEEM CODE SECTION (NEWLY ADDED) */}
+                    {/* REDEEM CODE SECTION */}
                     <div className="bg-white p-6 rounded-3xl shadow-lg border border-brand-100 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
                         <h3 className="text-lg font-bold text-brand-900 mb-4 flex items-center gap-2">
@@ -693,8 +875,8 @@
                             {history.length > 0 ? history.map((t, idx) => (
                                 <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-50 hover:bg-brand-50 transition">
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'use' ? 'bg-orange-100 text-orange-600' : 'bg-brand-100 text-brand-600'}`}>
-                                            <i className={`fas ${t.type === 'use' ? 'fa-minus' : 'fa-plus'}`}></i>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${(t.type === 'use' || t.type === 'use_direct') ? 'bg-orange-100 text-orange-600' : 'bg-brand-100 text-brand-600'}`}>
+                                            <i className={`fas ${(t.type === 'use' || t.type === 'use_direct') ? 'fa-minus' : 'fa-plus'}`}></i>
                                         </div>
                                         <div>
                                             <p className="font-bold text-gray-800 text-sm">{t.note || (t.type === 'earn_direct' ? 'Tích điểm tại quầy' : 'Giao dịch')}</p>
@@ -703,8 +885,8 @@
                                             </p>
                                         </div>
                                     </div>
-                                    <div className={`font-bold text-lg ${t.type === 'use' ? 'text-orange-500' : 'text-brand-600'}`}>
-                                        {t.type === 'use' ? '-' : '+'}{t.amount}
+                                    <div className={`font-bold text-lg ${(t.type === 'use' || t.type === 'use_direct') ? 'text-orange-500' : 'text-brand-600'}`}>
+                                        {(t.type === 'use' || t.type === 'use_direct') ? '-' : '+'}{t.amount}
                                     </div>
                                 </div>
                             )) : (
