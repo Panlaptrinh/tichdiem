@@ -86,7 +86,7 @@
         const { useState, useEffect } = React;
         
         // --- Firebase Configuration ---
-        // Prioritize environment config if available to fix "auth/configuration-not-found"
+        // Prioritize environment config if available
         let firebaseConfig;
         if (typeof window.__firebase_config !== 'undefined') {
              try {
@@ -97,7 +97,7 @@
         }
         
         if (!firebaseConfig) {
-             // Fallback to the hardcoded config
+             // Fallback config
              firebaseConfig = {
                 apiKey: "AIzaSyDLQBLROJ1ABogfjll-9ucznO3tchy-4aE",
                 authDomain: "shop-tich-diem.firebaseapp.com",
@@ -115,9 +115,6 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const appId = window.__app_id || 'lamay-loyalty-system'; 
-
-        // Logo URL fallback
-        const LOGO_URL = "https://cdn-icons-png.flaticon.com/512/1598/1598431.png"; // Placeholder leaf icon
 
         // --- Helpers ---
         const getCollectionRef = (name) => {
@@ -155,7 +152,6 @@
         };
 
         const BrandLogo = ({ size = "md" }) => {
-            // Using icon instead of broken image for demo stability
             const fontSize = size === "lg" ? "text-6xl" : size === "md" ? "text-4xl" : "text-2xl";
             return (
                 <div className={`${fontSize} text-brand-600`}>
@@ -253,7 +249,7 @@
                             <i className="fas fa-user"></i>
                         </div>
                         <h3 className="text-2xl font-bold text-brand-900 mb-2">Khách Hàng</h3>
-                        <p className="text-gray-600 text-sm">Nhập mã thưởng, kiểm tra điểm và lịch sử giao dịch.</p>
+                        <p className="text-gray-600 text-sm">Nhập mã thưởng, kiểm tra điểm và xem thẻ thành viên.</p>
                     </button>
 
                     <button 
@@ -265,13 +261,12 @@
                             <i className="fas fa-store"></i>
                         </div>
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">Cửa Hàng (Admin)</h3>
-                        <p className="text-gray-600 text-sm">Tạo mã thưởng, chỉnh sửa điểm và xuất báo cáo.</p>
+                        <p className="text-gray-600 text-sm">Quản lý mã thưởng và danh sách khách hàng.</p>
                     </button>
                 </div>
             </div>
         );
 
-        // --- ADMIN VIEW UPDATE ---
         const AdminView = ({ user, showNotify }) => {
             const [activeTab, setActiveTab] = useState('create-code');
             const [pointValue, setPointValue] = useState('');
@@ -285,10 +280,9 @@
             const [showAdjustModal, setShowAdjustModal] = useState(false);
             const [adjustTargetUser, setAdjustTargetUser] = useState(null);
             const [adjustAmount, setAdjustAmount] = useState('');
-            const [adjustType, setAdjustType] = useState('add'); // 'add' or 'sub'
+            const [adjustType, setAdjustType] = useState('add');
             const [adjustNote, setAdjustNote] = useState('');
 
-            // Fetch users list
             useEffect(() => {
                 if (!isAuthenticated || activeTab !== 'list') return;
                 const unsubscribe = getCollectionRef('users').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -308,7 +302,7 @@
                     const voucherData = {
                         code: newCode,
                         value: parseInt(pointValue),
-                        status: 'active', // active, used
+                        status: 'active',
                         createdBy: 'admin',
                         createdAt: new Date().toISOString()
                     };
@@ -323,32 +317,24 @@
                 setIsSubmitting(false);
             };
 
-            // --- EXPORT EXCEL FUNCTION ---
             const handleExportExcel = () => {
                 if (usersList.length === 0) {
                     showNotify("Chưa có dữ liệu để xuất!", "error");
                     return;
                 }
-                
-                // Format data for Excel
                 const dataToExport = usersList.map(user => ({
                     "Họ tên": user.name,
                     "Số điện thoại": user.phoneNumber,
                     "Điểm hiện tại": user.currentPoints,
                     "Ngày tham gia": user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : ''
                 }));
-
-                // Create worksheet
                 const ws = XLSX.utils.json_to_sheet(dataToExport);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "KhachHang");
-                
-                // Save file
                 XLSX.writeFile(wb, `DanhSachKhachHang_LaMay_${new Date().toISOString().slice(0,10)}.xlsx`);
                 showNotify("Đang tải xuống file Excel...", "success");
             };
 
-            // --- DIRECT ADJUSTMENT FUNCTIONS ---
             const openAdjustModal = (user) => {
                 setAdjustTargetUser(user);
                 setAdjustAmount('');
@@ -367,15 +353,12 @@
                     const amount = parseInt(adjustAmount);
                     const currentPoints = adjustTargetUser.currentPoints || 0;
                     let newPoints = adjustType === 'add' ? currentPoints + amount : currentPoints - amount;
-                    
-                    if (newPoints < 0) newPoints = 0; // Prevent negative points
+                    if (newPoints < 0) newPoints = 0; 
 
-                    // 1. Update User Points
                     await getUserRef(adjustTargetUser.phoneNumber).update({
                         currentPoints: newPoints
                     });
 
-                    // 2. Add Transaction Record
                     await getCollectionRef('transactions').add({
                         phoneNumber: adjustTargetUser.phoneNumber,
                         amount: amount,
@@ -394,7 +377,6 @@
                 setIsSubmitting(false);
             };
 
-            // Login Screen
             if (!isAuthenticated) {
                 return (
                     <div className="max-w-md mx-auto glass-panel p-10 rounded-3xl text-center animate-fade-in mt-10">
@@ -622,12 +604,9 @@
 
             useEffect(() => {
                 if (mode === 'dashboard' && userData) {
-                    // Update user info live
                     const userUnsub = getUserRef(userData.phoneNumber).onSnapshot(doc => {
                         if(doc.exists) setUserData(doc.data());
                     });
-
-                    // Update history live
                     const histUnsub = getCollectionRef('transactions')
                         .where('phoneNumber', '==', userData.phoneNumber)
                         .onSnapshot((snapshot) => {
@@ -639,6 +618,42 @@
                     return () => { userUnsub(); histUnsub(); }
                 }
             }, [mode, userData?.phoneNumber]);
+
+            // --- Card Style Logic ---
+            const getCardStyle = (points) => {
+                // > 7000: Lá Cẩm (Tím) - Magenta/Purple
+                if (points > 7000) return {
+                    bg: 'bg-gradient-to-br from-purple-900 via-fuchsia-800 to-purple-700',
+                    icon: 'fa-gem',
+                    name: 'Lá Cẩm (Diamond)',
+                    textColor: 'text-fuchsia-100',
+                    subText: 'THÀNH VIÊN KIM CƯƠNG'
+                };
+                // > 3000: Nghệ (Vàng) - Turmeric/Gold
+                if (points > 3000) return {
+                    bg: 'bg-gradient-to-br from-amber-700 via-yellow-600 to-amber-500',
+                    icon: 'fa-crown',
+                    name: 'Nghệ (Gold)',
+                    textColor: 'text-amber-100',
+                    subText: 'THÀNH VIÊN VÀNG'
+                };
+                // > 1500: Củ Dền (Hồng/Đỏ) - Beetroot/Pink
+                if (points > 1500) return {
+                    bg: 'bg-gradient-to-br from-rose-900 via-pink-700 to-rose-600',
+                    icon: 'fa-star',
+                    name: 'Củ Dền (Silver)',
+                    textColor: 'text-rose-100',
+                    subText: 'THÀNH VIÊN BẠC'
+                };
+                // Default: Lá Mây (Xanh) - Green
+                return {
+                    bg: 'bg-gradient-to-br from-brand-800 to-brand-600',
+                    icon: 'fa-leaf',
+                    name: 'Lá Mây (Member)',
+                    textColor: 'text-brand-100',
+                    subText: 'THÀNH VIÊN THÂN THIẾT'
+                };
+            };
 
             const handleRegister = async (e) => {
                 e.preventDefault();
@@ -691,37 +706,28 @@
                 e.preventDefault();
                 if (!voucherCode) return;
                 setIsProcessing(true);
-
                 try {
                     const code = voucherCode.trim().toUpperCase();
                     const voucherRef = getVoucherRef(code);
                     const voucherSnap = await voucherRef.get();
 
-                    if (!voucherSnap.exists) {
-                        throw new Error("Mã không hợp lệ hoặc không tồn tại");
-                    }
+                    if (!voucherSnap.exists) throw new Error("Mã không hợp lệ hoặc không tồn tại");
 
                     const voucherData = voucherSnap.data();
-                    if (voucherData.status !== 'active') {
-                        throw new Error("Mã này đã được sử dụng");
-                    }
+                    if (voucherData.status !== 'active') throw new Error("Mã này đã được sử dụng");
 
-                    // Updates
                     const newPoints = (userData.currentPoints || 0) + voucherData.value;
                     
-                    // 1. Mark used
                     await voucherRef.update({
                         status: 'used',
                         usedBy: userData.phoneNumber,
                         usedAt: new Date().toISOString()
                     });
 
-                    // 2. Add points
                     await getUserRef(userData.phoneNumber).update({
                         currentPoints: newPoints
                     });
 
-                    // 3. Log transaction
                     await getCollectionRef('transactions').add({
                         phoneNumber: userData.phoneNumber,
                         amount: voucherData.value,
@@ -812,35 +818,41 @@
             }
 
             // Customer Dashboard
+            const cardStyle = getCardStyle(userData.currentPoints || 0);
+
             return (
                 <div className="max-w-lg mx-auto space-y-8 animate-fade-in">
-                    {/* Membership Card */}
-                    <div className="relative bg-gradient-to-br from-brand-800 to-brand-600 rounded-3xl p-8 text-white shadow-2xl overflow-hidden min-h-[220px] flex flex-col justify-between transform transition hover:scale-[1.02]">
+                    {/* Membership Card - DYNAMIC COLOR */}
+                    <div className={`relative ${cardStyle.bg} rounded-3xl p-8 text-white shadow-2xl overflow-hidden min-h-[220px] flex flex-col justify-between transform transition hover:scale-[1.02] duration-500`}>
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
-                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-400 opacity-20 rounded-full blur-xl"></div>
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-10 rounded-full blur-xl"></div>
                         
                         <div className="flex justify-between items-start relative z-10">
                             <div>
-                                <h2 className="text-xl font-serif tracking-wide opacity-90">Lá Mây Member</h2>
-                                <p className="text-brand-100 text-xs tracking-widest mt-1">LOYALTY CARD</p>
+                                <h2 className="text-xl font-serif tracking-wide opacity-95">{cardStyle.name}</h2>
+                                <p className={`text-xs tracking-widest mt-1 opacity-80 uppercase`}>{cardStyle.subText}</p>
                             </div>
-                            <i className="fas fa-leaf text-4xl opacity-20"></i>
+                            <i className={`fas ${cardStyle.icon} text-4xl opacity-30`}></i>
                         </div>
 
                         <div className="relative z-10 mt-6">
                             <div className="flex items-end gap-3">
-                                <h1 className="text-6xl font-bold">{userData.currentPoints}</h1>
-                                <span className="text-xl font-medium mb-2 text-brand-200">điểm</span>
+                                <h1 className="text-6xl font-bold drop-shadow-md">{userData.currentPoints}</h1>
+                                <span className="text-xl font-medium mb-2 opacity-80">điểm</span>
+                            </div>
+                            {/* Progress bar simulation for fun */}
+                            <div className="w-full h-1.5 bg-black/20 rounded-full mt-2 overflow-hidden">
+                                <div className="h-full bg-white/50 w-3/4"></div>
                             </div>
                         </div>
 
                         <div className="flex justify-between items-end relative z-10 mt-4">
                             <div>
-                                <p className="text-brand-200 text-xs uppercase">Chủ thẻ</p>
-                                <p className="font-bold text-lg tracking-wide">{userData.name}</p>
+                                <p className="text-xs uppercase opacity-70">Chủ thẻ</p>
+                                <p className="font-bold text-lg tracking-wide shadow-black drop-shadow-sm">{userData.name}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-brand-200 text-xs font-mono">{userData.phoneNumber}</p>
+                                <p className="text-xs font-mono opacity-80">{userData.phoneNumber}</p>
                             </div>
                         </div>
                     </div>
