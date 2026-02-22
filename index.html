@@ -4,64 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lá Mây - Hệ Thống Tích Điểm</title>
-    <link rel="icon" type="image/x-icon" href="favicon-96x96.ico">
+</head>
+<body class="pb-safe">
     
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    
-    <!-- Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Firebase SDKs (Compat version) -->
-    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
-
-    <!-- Excel Export Library (SheetJS) -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-
-    <!-- Icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- CHUYỂN TOÀN BỘ THƯ VIỆN VÀO BODY ĐỂ TRÁNH WEBSITE BUILDER CẮT BỎ -->
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
-    <script>
-        // Cấu hình an toàn cho thư viện CSS
-        if (typeof tailwind !== 'undefined') {
-            tailwind.config = {
-                theme: {
-                    extend: {
-                        colors: {
-                            brand: {
-                                50: '#ecfdf5',
-                                100: '#d1fae5',
-                                200: '#a7f3d0',
-                                300: '#6ee7b7',
-                                400: '#34d399',
-                                500: '#10b981',
-                                600: '#059669',
-                                700: '#047857',
-                                800: '#065f46',
-                                900: '#064e3b',
-                            }
-                        },
-                        fontFamily: {
-                            sans: ['Nunito', 'sans-serif'],
-                            serif: ['Playfair Display', 'serif'],
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
+    <!-- CSS BẢO VỆ CƠ BẢN (Chống vỡ layout khi Tailwind tải chậm hoặc bị chặn) -->
     <style>
-        /* Base Fallbacks */
         body { 
             margin: 0;
             font-family: 'Nunito', sans-serif; 
@@ -70,7 +25,12 @@
             -webkit-tap-highlight-color: transparent;
             overflow-x: hidden;
         }
+        
+        /* KHÓA CỨNG KÍCH THƯỚC ẢNH LOGO - CHỐNG LỖI PHÓNG TO KHỔNG LỒ */
         img { max-width: 100%; height: auto; }
+        .logo-img-lg { height: 80px !important; width: auto !important; max-width: 200px; object-fit: contain; }
+        .logo-img-md { height: 48px !important; width: auto !important; max-width: 150px; object-fit: contain; }
+        .logo-img-sm { height: 32px !important; width: auto !important; max-width: 100px; object-fit: contain; }
         
         .logo-font { font-family: 'Playfair Display', serif; }
         .glass-panel {
@@ -93,8 +53,47 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-</head>
-<body>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Cấu hình an toàn cho thư viện CSS
+        if (typeof window.tailwind !== 'undefined') {
+            window.tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            brand: {
+                                50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7',
+                                400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857',
+                                800: '#065f46', 900: '#064e3b',
+                            }
+                        },
+                        fontFamily: {
+                            sans: ['Nunito', 'sans-serif'],
+                            serif: ['Playfair Display', 'serif'],
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase SDKs (Compat version) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+
+    <!-- Excel Export Library (SheetJS) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
     <div id="root"></div>
 
     <script type="text/babel" data-presets="react,env">
@@ -122,7 +121,6 @@
         const db = firebase.firestore();
         const appId = window.__app_id || 'lamay-loyalty-system'; 
 
-        // Logo URL gốc
         const LOGO_URL = "favicon-96x96.ico";
 
         // --- Danh sách quà tặng ---
@@ -178,13 +176,12 @@
         };
 
         const BrandLogo = ({ size = "md" }) => {
-            // Khóa cứng chiều cao inline style, tránh bung vỡ ảnh
-            const exactHeight = size === "lg" ? "80px" : size === "md" ? "48px" : "32px";
+            // Sử dụng class CSS tĩnh để chống vỡ hình
+            const exactClass = size === "lg" ? "logo-img-lg" : size === "md" ? "logo-img-md" : "logo-img-sm";
             return (
                 <img 
                     src={LOGO_URL} alt="Lá Mây Logo" 
-                    className="object-contain drop-shadow-sm hover:scale-105 transition duration-300"
-                    style={{ height: exactHeight, width: 'auto' }}
+                    className={`${exactClass} drop-shadow-sm hover:scale-105 transition duration-300`}
                     onError={(e) => { e.target.onerror = null; e.target.src = "logolamay.png"; }}
                 />
             );
@@ -783,7 +780,7 @@
                                         Tích điểm qua mã
                                     </h3>
                                     <form onSubmit={handleRedeemCode} className="flex gap-2">
-                                        <input type="text" value={voucherCode} onChange={e => setVoucherCode(e.target.value)} className="flex-1 p-3.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none uppercase font-bold text-brand-800 tracking-wider bg-gray-50/50 min-w-0" placeholder="NHẬP MÃ TẠI ĐÂY" />
+                                        <input type="text" value={voucherCode} onChange={e => setVoucherCode(e.target.value)} className="flex-1 p-3.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none uppercase font-bold text-brand-800 tracking-wider bg-gray-50/50 min-w-0" placeholder="NHẬP MÃ" />
                                         <button disabled={isProcessing} type="submit" className="bg-brand-600 text-white px-5 sm:px-6 rounded-2xl font-bold hover:bg-brand-700 transition shadow-md">{isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Nạp'}</button>
                                     </form>
                                 </div>
