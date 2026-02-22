@@ -2,9 +2,9 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lá Mây - Hệ Thống Tích Điểm</title>
-    <link rel="icon" type="image/x-icon" href="favicon-96x96.ico">
+    <link rel="icon" type="image/png" href="logolamay.png">
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -28,10 +28,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
     <script>
-        // Khởi tạo an toàn để tránh lỗi ReferenceError khi thư viện tải bất đồng bộ
         window.tailwind = window.tailwind || {};
         window.tailwind.config = {
             theme: {
@@ -44,7 +43,7 @@
                             300: '#6ee7b7',
                             400: '#34d399',
                             500: '#10b981',
-                            600: '#059669', // Emerald 600
+                            600: '#059669',
                             700: '#047857',
                             800: '#065f46',
                             900: '#064e3b',
@@ -64,6 +63,7 @@
             font-family: 'Nunito', sans-serif; 
             background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
         }
         .logo-font { font-family: 'Playfair Display', serif; }
         .glass-panel {
@@ -72,23 +72,19 @@
             border: 1px solid rgba(255, 255, 255, 0.5);
             box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
         }
-        .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         
-        /* Modal Overlay */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
         }
         
-        /* Custom Scrollbar for horizontal scrolling */
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
@@ -100,13 +96,8 @@
         // --- Firebase Configuration ---
         let firebaseConfig;
         if (typeof window.__firebase_config !== 'undefined') {
-             try {
-                firebaseConfig = JSON.parse(window.__firebase_config);
-             } catch (e) {
-                console.error("Error parsing __firebase_config", e);
-             }
+             try { firebaseConfig = JSON.parse(window.__firebase_config); } catch (e) { console.error(e); }
         }
-        
         if (!firebaseConfig) {
              firebaseConfig = {
                 apiKey: "AIzaSyDLQBLROJ1ABogfjll-9ucznO3tchy-4aE",
@@ -119,36 +110,25 @@
             };
         }
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
         const appId = window.__app_id || 'lamay-loyalty-system'; 
 
-        // Logo URL gốc của bạn
-        const LOGO_URL = "favicon-96x96.ico";
+        const LOGO_URL = "logolamay.png";
 
-        // --- Danh sách quà tặng phân cấp theo hạng thẻ ---
+        // --- Danh sách quà tặng ---
         const REWARDS_CATALOG = [
-            // Hạng Lá Mây (0+)
             { id: 'gift_1', tier: 0, name: 'Móc khóa Lá Mây', points: 500, emoji: '🗝️', color: 'text-brand-600', bg: 'bg-brand-50' },
             { id: 'gift_2', tier: 0, name: 'Voucher 20K', points: 800, emoji: '🎫', color: 'text-brand-600', bg: 'bg-brand-50' },
-            
-            // Hạng Củ Dền (Mở khóa khi đạt 1500+ điểm)
             { id: 'gift_3', tier: 1500, name: 'Túi Tote Eco', points: 1500, emoji: '🛍️', color: 'text-rose-600', bg: 'bg-rose-50' },
             { id: 'gift_4', tier: 1500, name: 'Voucher 50K', points: 2000, emoji: '🎟️', color: 'text-rose-600', bg: 'bg-rose-50' },
-            
-            // Hạng Nghệ (Mở khóa khi đạt 3000+ điểm)
             { id: 'gift_5', tier: 3000, name: 'Gấu bông Lá Mây', points: 3000, emoji: '🧸', color: 'text-amber-600', bg: 'bg-amber-50' },
             { id: 'gift_6', tier: 3000, name: 'Set Trà Hữu Cơ', points: 4000, emoji: '🍵', color: 'text-amber-600', bg: 'bg-amber-50' },
-            
-            // Hạng Lá Cẩm (Đặc quyền VVIP 7000+ điểm)
             { id: 'gift_7', tier: 7000, name: 'Bình Giữ Nhiệt', points: 6000, emoji: '🧋', color: 'text-purple-600', bg: 'bg-purple-50' },
             { id: 'gift_8', tier: 7000, name: 'Set Quà VVIP', points: 10000, emoji: '🎁', color: 'text-purple-600', bg: 'bg-purple-50' }
         ];
 
-        // --- Helpers ---
         const getCollectionRef = (name) => db.collection('artifacts').doc(appId).collection('public').doc('data').collection(name);
         const getUserRef = (phone) => getCollectionRef('users').doc(phone);
         const getVoucherRef = (code) => getCollectionRef('vouchers').doc(code);
@@ -160,14 +140,26 @@
             return `LAMAY-${result}`;
         };
 
+        const getGreeting = () => {
+            const hour = new Date().getHours();
+            if (hour < 11) return "Chào buổi sáng 🌅";
+            if (hour < 14) return "Chào buổi trưa ☀️";
+            if (hour < 18) return "Chào buổi chiều 🌤️";
+            return "Chào buổi tối 🌙";
+        };
+
+        const getNextTierInfo = (points) => {
+            if (points < 1500) return { name: 'Củ Dền', target: 1500, remain: 1500 - points, percent: Math.max(2, (points/1500)*100), color: 'text-rose-500', bg: 'bg-rose-500' };
+            if (points < 3000) return { name: 'Nghệ', target: 3000, remain: 3000 - points, percent: Math.max(2, ((points-1500)/(3000-1500))*100), color: 'text-amber-500', bg: 'bg-amber-500' };
+            if (points < 7000) return { name: 'Lá Cẩm', target: 7000, remain: 7000 - points, percent: Math.max(2, ((points-3000)/(7000-3000))*100), color: 'text-purple-500', bg: 'bg-purple-500' };
+            return { name: 'Max', target: 7000, remain: 0, percent: 100, color: 'text-brand-500', bg: 'bg-brand-500' };
+        };
+
         // --- Components ---
 
         const Notification = ({ message, type, onClose }) => {
             if (!message) return null;
-            const styles = type === 'success' 
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
-                : 'bg-red-100 text-red-800 border-red-200';
-            
+            const styles = type === 'success' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-red-100 text-red-800 border-red-200';
             return (
                 <div className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-xl border shadow-xl flex items-center gap-3 animate-fade-in ${styles}`}>
                     <i className={`fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-xl`}></i>
@@ -178,18 +170,12 @@
         };
 
         const BrandLogo = ({ size = "md" }) => {
-            // Hiển thị logo bằng thẻ img thay cho icon tĩnh
             const dims = size === "lg" ? "h-20" : size === "md" ? "h-12" : "h-8";
             return (
                 <img 
-                    src={LOGO_URL} 
-                    alt="Lá Mây Logo" 
+                    src={LOGO_URL} alt="Lá Mây Logo" 
                     className={`${dims} object-contain drop-shadow-sm hover:scale-105 transition duration-300`}
-                    onError={(e) => {
-                        // Ảnh dự phòng nếu không tìm thấy
-                        e.target.onerror = null; 
-                        e.target.src = "logolamay.png";
-                    }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = "https://cdn-icons-png.flaticon.com/512/1598/1598431.png"; }}
                 />
             );
         };
@@ -203,20 +189,12 @@
             useEffect(() => {
                 const initAuth = async () => {
                     try {
-                        if (window.__initial_auth_token) {
-                            await auth.signInWithCustomToken(window.__initial_auth_token);
-                        } else {
-                            await auth.signInAnonymously();
-                        }
-                    } catch (error) {
-                        console.error("Auth error:", error);
-                    }
+                        if (window.__initial_auth_token) await auth.signInWithCustomToken(window.__initial_auth_token);
+                        else await auth.signInAnonymously();
+                    } catch (error) { console.error("Auth error:", error); }
                 };
                 initAuth();
-                const unsubscribe = auth.onAuthStateChanged((u) => {
-                    setUser(u);
-                    setLoading(false);
-                });
+                const unsubscribe = auth.onAuthStateChanged((u) => { setUser(u); setLoading(false); });
                 return () => unsubscribe();
             }, []);
 
@@ -226,7 +204,7 @@
             };
 
             if (loading) return (
-                <div className="min-h-screen flex items-center justify-center bg-brand-50">
+                <div className="min-h-screen flex items-center justify-center">
                     <div className="text-center animate-pulse flex flex-col items-center">
                         <BrandLogo size="lg" />
                         <p className="mt-4 text-brand-800 font-medium">Đang tải dữ liệu...</p>
@@ -242,26 +220,28 @@
                         <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('home')}>
                                 <BrandLogo size="md" />
-                                <span className="font-serif font-bold text-xl text-brand-900 hidden md:block"></span>
+                                <span className="font-serif font-bold text-xl text-brand-900 hidden md:block">Lá Mây</span>
                             </div>
                             {view !== 'home' && (
-                                <button onClick={() => setView('home')} className="px-4 py-2 rounded-full text-sm font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 transition flex items-center gap-2">
+                                <button onClick={() => setView('home')} className="px-4 py-2 rounded-full text-sm font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 transition flex items-center gap-2 shadow-sm">
                                     <i className="fas fa-home"></i> Trang chủ
                                 </button>
                             )}
                         </div>
                     </header>
 
-                    <main className="max-w-5xl mx-auto px-4 py-8">
+                    <main className="max-w-5xl mx-auto px-4 py-8 relative">
                         {view === 'home' && <HomeView setView={setView} />}
                         {view === 'admin' && <AdminView user={user} showNotify={showNotify} />}
-                        {view === 'customer' && <CustomerView user={user} showNotify={showNotify} />}
+                        {view === 'customer' && <CustomerView user={user} showNotify={showNotify} goHome={() => setView('home')} />}
                     </main>
 
-                    <footer className="text-center py-8 text-brand-800/60 text-sm">
-                        <p>© 2026 Lá Mây - Natural & Organic.</p>
-                        <p className="text-xs mt-1">Hệ thống tích điểm khách hàng thân thiết</p>
-                    </footer>
+                    {view !== 'customer' && (
+                        <footer className="text-center py-8 text-brand-800/60 text-sm">
+                            <p>© 2026 Lá Mây - Natural & Organic.</p>
+                            <p className="text-xs mt-1">Hệ thống tích điểm khách hàng thân thiết</p>
+                        </footer>
+                    )}
                 </div>
             );
         };
@@ -274,27 +254,17 @@
                     <p className="text-brand-700 text-lg">Chào mừng bạn đến với hệ thống tích điểm.</p>
                 </div>
                 
-                <div className="grid md:grid-cols-2 gap-8 w-full max-w-3xl px-4">
-                    <button 
-                        onClick={() => setView('customer')}
-                        className="glass-panel p-8 rounded-3xl hover:shadow-2xl transition-all hover:-translate-y-2 group cursor-pointer border-t-4 border-brand-500 text-center relative overflow-hidden"
-                    >
+                <div className="grid md:grid-cols-2 gap-8 w-full max-w-3xl">
+                    <button onClick={() => setView('customer')} className="glass-panel p-8 rounded-3xl hover:shadow-2xl transition-all hover:-translate-y-2 group cursor-pointer border-t-4 border-brand-500 text-center relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-5 text-9xl text-brand-900 group-hover:scale-110 transition duration-700"><i className="fas fa-leaf"></i></div>
-                        <div className="w-20 h-20 mx-auto bg-brand-100 rounded-full flex items-center justify-center text-brand-600 text-3xl mb-6 group-hover:bg-brand-600 group-hover:text-white transition-colors duration-300 shadow-inner">
-                            <i className="fas fa-user"></i>
-                        </div>
+                        <div className="w-20 h-20 mx-auto bg-brand-100 rounded-full flex items-center justify-center text-brand-600 text-3xl mb-6 group-hover:bg-brand-600 group-hover:text-white transition-colors duration-300 shadow-inner"><i className="fas fa-user"></i></div>
                         <h3 className="text-2xl font-bold text-brand-900 mb-2">Khách Hàng</h3>
                         <p className="text-gray-600 text-sm">Nhập mã thưởng, đổi quà và xem thẻ thành viên.</p>
                     </button>
 
-                    <button 
-                        onClick={() => setView('admin')}
-                        className="glass-panel p-8 rounded-3xl hover:shadow-2xl transition-all hover:-translate-y-2 group cursor-pointer border-t-4 border-gray-500 text-center relative overflow-hidden"
-                    >
+                    <button onClick={() => setView('admin')} className="glass-panel p-8 rounded-3xl hover:shadow-2xl transition-all hover:-translate-y-2 group cursor-pointer border-t-4 border-gray-500 text-center relative overflow-hidden">
                          <div className="absolute top-0 right-0 p-4 opacity-5 text-9xl text-gray-900 group-hover:scale-110 transition duration-700"><i className="fas fa-cogs"></i></div>
-                        <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center text-gray-600 text-3xl mb-6 group-hover:bg-gray-700 group-hover:text-white transition-colors duration-300 shadow-inner">
-                            <i className="fas fa-store"></i>
-                        </div>
+                        <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center text-gray-600 text-3xl mb-6 group-hover:bg-gray-700 group-hover:text-white transition-colors duration-300 shadow-inner"><i className="fas fa-store"></i></div>
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">Cửa Hàng (Admin)</h3>
                         <p className="text-gray-600 text-sm">Quản lý mã thưởng và danh sách khách hàng.</p>
                     </button>
@@ -320,61 +290,37 @@
 
             useEffect(() => {
                 if (!isAuthenticated) return;
-                
-                // Lấy danh sách users
                 const unsubscribeUsers = getCollectionRef('users').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
                     const users = snapshot.docs.map(doc => doc.data());
                     setUsersList(users);
                 });
-
-                // Lấy danh sách yêu cầu đổi quà
                 const unsubscribeRedemptions = getCollectionRef('redemptions').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
                     const reqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setRedemptionsList(reqs);
                 });
-
-                return () => {
-                    unsubscribeUsers();
-                    unsubscribeRedemptions();
-                };
+                return () => { unsubscribeUsers(); unsubscribeRedemptions(); };
             }, [isAuthenticated]);
 
             const handleCreateCode = async (e) => {
                 e.preventDefault();
                 if (!pointValue || parseInt(pointValue) <= 0) return showNotify("Vui lòng nhập số điểm hợp lệ", "error");
-
                 setIsSubmitting(true);
                 try {
                     const newCode = generateCode();
-                    const voucherData = {
-                        code: newCode,
-                        value: parseInt(pointValue),
-                        status: 'active',
-                        createdBy: 'admin',
-                        createdAt: new Date().toISOString()
-                    };
-
+                    const voucherData = { code: newCode, value: parseInt(pointValue), status: 'active', createdBy: 'admin', createdAt: new Date().toISOString() };
                     await getVoucherRef(newCode).set(voucherData);
                     setGeneratedCode(newCode);
                     showNotify("Tạo mã thành công!", "success");
                     setPointValue('');
-                } catch (error) {
-                    showNotify("Lỗi: " + error.message, "error");
-                }
+                } catch (error) { showNotify("Lỗi: " + error.message, "error"); }
                 setIsSubmitting(false);
             };
 
             const handleExportExcel = () => {
-                if (usersList.length === 0) {
-                    showNotify("Chưa có dữ liệu để xuất!", "error");
-                    return;
-                }
+                if (usersList.length === 0) return showNotify("Chưa có dữ liệu để xuất!", "error");
                 const dataToExport = usersList.map(user => ({
-                    "Họ tên": user.name,
-                    "Số điện thoại": user.phoneNumber,
-                    "Điểm hiện tại": user.currentPoints,
-                    "Ngày tham gia": user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '',
-                    "Địa chỉ đã lưu": user.address || ''
+                    "Họ tên": user.name, "Số điện thoại": user.phoneNumber, "Email": user.email || '', "Điểm hiện tại": user.currentPoints,
+                    "Ngày tham gia": user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '', "Địa chỉ đã lưu": user.address || ''
                 }));
                 const ws = XLSX.utils.json_to_sheet(dataToExport);
                 const wb = XLSX.utils.book_new();
@@ -383,102 +329,49 @@
                 showNotify("Đang tải xuống file Excel...", "success");
             };
 
-            const openAdjustModal = (user) => {
-                setAdjustTargetUser(user);
-                setAdjustAmount('');
-                setAdjustType('add');
-                setAdjustNote('');
-                setShowAdjustModal(true);
-            };
+            const openAdjustModal = (user) => { setAdjustTargetUser(user); setAdjustAmount(''); setAdjustType('add'); setAdjustNote(''); setShowAdjustModal(true); };
 
             const handleDirectAdjustment = async (e) => {
                 e.preventDefault();
                 if (!adjustAmount || parseInt(adjustAmount) <= 0) return showNotify("Nhập số điểm hợp lệ", "error");
                 if (!adjustTargetUser) return;
-
                 setIsSubmitting(true);
                 try {
                     const amount = parseInt(adjustAmount);
-                    const currentPoints = adjustTargetUser.currentPoints || 0;
-                    let newPoints = adjustType === 'add' ? currentPoints + amount : currentPoints - amount;
+                    let newPoints = adjustType === 'add' ? (adjustTargetUser.currentPoints || 0) + amount : (adjustTargetUser.currentPoints || 0) - amount;
                     if (newPoints < 0) newPoints = 0; 
-
-                    await getUserRef(adjustTargetUser.phoneNumber).update({
-                        currentPoints: newPoints
-                    });
-
-                    await getCollectionRef('transactions').add({
-                        phoneNumber: adjustTargetUser.phoneNumber,
-                        amount: amount,
-                        type: adjustType === 'add' ? 'earn_direct' : 'use_direct',
-                        note: adjustNote || (adjustType === 'add' ? 'Admin cộng điểm' : 'Admin trừ điểm'),
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        performedBy: 'admin'
-                    });
-
+                    await getUserRef(adjustTargetUser.phoneNumber).update({ currentPoints: newPoints });
+                    await getCollectionRef('transactions').add({ phoneNumber: adjustTargetUser.phoneNumber, amount: amount, type: adjustType === 'add' ? 'earn_direct' : 'use_direct', note: adjustNote || (adjustType === 'add' ? 'Admin cộng điểm' : 'Admin trừ điểm'), timestamp: firebase.firestore.FieldValue.serverTimestamp(), performedBy: 'admin' });
                     showNotify(`Đã ${adjustType === 'add' ? 'cộng' : 'trừ'} ${amount} điểm cho ${adjustTargetUser.name}`, "success");
                     setShowAdjustModal(false);
-                } catch (error) {
-                    console.error(error);
-                    showNotify("Lỗi cập nhật: " + error.message, "error");
-                }
+                } catch (error) { showNotify("Lỗi cập nhật: " + error.message, "error"); }
                 setIsSubmitting(false);
             };
 
             const handleCopy = () => {
                 const el = document.createElement('textarea');
-                el.value = generatedCode;
-                el.setAttribute('readonly', '');
-                el.style.position = 'absolute';
-                el.style.left = '-9999px';
-                document.body.appendChild(el);
-                el.select();
-                try {
-                    document.execCommand('copy');
-                    showNotify('Đã sao chép mã!');
-                } catch (err) {
-                    showNotify('Sao chép thất bại!', 'error');
-                }
+                el.value = generatedCode; el.setAttribute('readonly', ''); el.style.position = 'absolute'; el.style.left = '-9999px';
+                document.body.appendChild(el); el.select();
+                try { document.execCommand('copy'); showNotify('Đã sao chép mã!'); } catch (err) { showNotify('Sao chép thất bại!', 'error'); }
                 document.body.removeChild(el);
             };
 
             const handleUpdateRedemptionStatus = async (id, newStatus) => {
                 try {
-                    await getCollectionRef('redemptions').doc(id).update({
-                        status: newStatus,
-                        updatedAt: new Date().toISOString()
-                    });
+                    await getCollectionRef('redemptions').doc(id).update({ status: newStatus, updatedAt: new Date().toISOString() });
                     showNotify('Đã cập nhật trạng thái đơn quà!', 'success');
-                } catch (error) {
-                    showNotify('Lỗi cập nhật: ' + error.message, 'error');
-                }
+                } catch (error) { showNotify('Lỗi cập nhật: ' + error.message, 'error'); }
             };
 
             if (!isAuthenticated) {
                 return (
-                    <div className="max-w-md mx-auto glass-panel p-10 rounded-3xl text-center animate-fade-in mt-10">
-                        <div className="mb-6 flex justify-center">
-                            <BrandLogo size="lg" />
-                        </div>
+                    <div className="max-w-md mx-auto bg-white/90 backdrop-blur-md p-10 rounded-3xl text-center animate-fade-in shadow-xl border border-gray-100">
+                        <div className="mb-6 flex justify-center"><BrandLogo size="lg" /></div>
                         <h3 className="text-2xl font-bold mb-2 text-brand-900">Quản trị viên</h3>
                         <p className="text-gray-500 mb-8">Vui lòng nhập mã PIN bảo mật</p>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            if (pin === '2209') setIsAuthenticated(true);
-                            else showNotify('Mật khẩu không đúng', 'error');
-                        }}>
-                            <input 
-                                type="password" 
-                                className="w-full p-4 border border-brand-200 rounded-xl mb-6 text-center text-3xl tracking-[1em] outline-none focus:ring-2 focus:ring-brand-500 bg-white/50 font-bold text-brand-800"
-                                maxLength="4"
-                                value={pin}
-                                onChange={(e) => setPin(e.target.value)}
-                                placeholder="••••"
-                                autoFocus
-                            />
-                            <button type="submit" className="w-full bg-brand-600 text-white py-4 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
-                                Đăng Nhập
-                            </button>
+                        <form onSubmit={(e) => { e.preventDefault(); if (pin === '2209') setIsAuthenticated(true); else showNotify('Mật khẩu không đúng', 'error'); }}>
+                            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full p-4 border border-brand-200 rounded-xl mb-6 text-center text-3xl tracking-[1em] outline-none focus:ring-2 focus:ring-brand-500 bg-gray-50 font-bold text-brand-800" maxLength="4" placeholder="••••" autoFocus />
+                            <button type="submit" className="w-full bg-brand-600 text-white py-4 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">Đăng Nhập</button>
                         </form>
                     </div>
                 );
@@ -487,72 +380,32 @@
             return (
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in min-h-[500px] border border-brand-100 relative">
                     <div className="flex border-b border-gray-100 flex-wrap">
-                        <button 
-                            onClick={() => setActiveTab('create-code')}
-                            className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'create-code' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
-                        >
-                            <i className="fas fa-qrcode mr-2"></i>Tạo Mã Thưởng
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('list')}
-                            className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'list' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
-                        >
-                            <i className="fas fa-users mr-2"></i>Danh Sách Khách
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('requests')}
-                            className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'requests' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
-                        >
-                            <i className="fas fa-gift mr-2"></i>Yêu Cầu Quà
-                            {redemptionsList.filter(r => r.status === 'pending').length > 0 && (
-                                <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse shadow-sm">
-                                    {redemptionsList.filter(r => r.status === 'pending').length}
-                                </span>
-                            )}
+                        <button onClick={() => setActiveTab('create-code')} className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'create-code' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}><i className="fas fa-qrcode mr-2"></i>Tạo Mã</button>
+                        <button onClick={() => setActiveTab('list')} className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'list' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}><i className="fas fa-users mr-2"></i>Khách Hàng</button>
+                        <button onClick={() => setActiveTab('requests')} className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'requests' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}><i className="fas fa-gift mr-2"></i>Yêu Cầu Quà
+                            {redemptionsList.filter(r => r.status === 'pending').length > 0 && <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse shadow-sm">{redemptionsList.filter(r => r.status === 'pending').length}</span>}
                         </button>
                     </div>
 
-                    <div className="p-8 bg-gray-50/50 h-full">
+                    <div className="p-4 sm:p-8 bg-gray-50/50 h-full">
                         {activeTab === 'create-code' && (
                             <div className="max-w-lg mx-auto">
-                                <div className="text-center mb-8">
-                                    <h3 className="text-xl font-bold text-gray-800">Phát Hành Mã Điểm</h3>
-                                    <p className="text-sm text-gray-500">Tạo mã để gửi cho khách hàng nhập (Online)</p>
-                                </div>
-
-                                <div className="bg-white p-8 rounded-2xl shadow-lg border-t-4 border-brand-500 animate-fade-in">
+                                <div className="text-center mb-8"><h3 className="text-xl font-bold text-gray-800">Phát Hành Mã Điểm</h3><p className="text-sm text-gray-500">Tạo mã để gửi cho khách hàng nhập (Online)</p></div>
+                                <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border-t-4 border-brand-500 animate-fade-in">
                                     <form onSubmit={handleCreateCode} className="space-y-6">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2">Giá trị điểm thưởng</label>
-                                            <div className="relative">
-                                                <input 
-                                                    type="number" 
-                                                    value={pointValue}
-                                                    onChange={e => setPointValue(e.target.value)}
-                                                    className="w-full p-4 pl-12 border rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-xl font-bold text-brand-700"
-                                                    placeholder="VD: 50"
-                                                    required
-                                                />
-                                                <div className="absolute left-4 top-4 text-brand-400 text-xl">
-                                                    <i className="fas fa-star"></i>
-                                                </div>
-                                                <span className="absolute right-4 top-5 text-gray-400 text-sm font-bold">điểm</span>
-                                            </div>
+                                            <div className="relative"><input type="number" value={pointValue} onChange={e => setPointValue(e.target.value)} className="w-full p-4 pl-12 border rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-xl font-bold text-brand-700 bg-gray-50/50" placeholder="VD: 50" required /><div className="absolute left-4 top-4 text-brand-400 text-xl"><i className="fas fa-star"></i></div><span className="absolute right-4 top-5 text-gray-400 text-sm font-bold">điểm</span></div>
                                         </div>
-                                        <button disabled={isSubmitting} type="submit" className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-xl font-bold hover:shadow-lg transition transform hover:-translate-y-1">
-                                            {isSubmitting ? 'Đang tạo...' : 'Tạo Mã Ngay'}
-                                        </button>
+                                        <button disabled={isSubmitting} type="submit" className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-xl font-bold hover:shadow-lg transition transform hover:-translate-y-1">{isSubmitting ? 'Đang tạo...' : 'Tạo Mã Ngay'}</button>
                                     </form>
-
                                     {generatedCode && (
                                         <div className="mt-8 bg-brand-50 border border-brand-200 rounded-xl p-6 text-center animate-fade-in relative overflow-hidden">
-                                            <div className="absolute top-0 left-0 w-full h-1 bg-brand-300"></div>
                                             <p className="text-brand-800 text-sm mb-3 font-medium uppercase tracking-wider">Mã thưởng vừa tạo</p>
-                                            <div className="bg-white border-2 border-dashed border-brand-400 rounded-lg p-4 mb-4 cursor-pointer hover:bg-gray-50 transition group" onClick={handleCopy}>
+                                            <div className="bg-white border-2 border-dashed border-brand-400 rounded-lg p-4 mb-4 cursor-pointer hover:bg-gray-50 transition group shadow-sm" onClick={handleCopy}>
                                                 <span className="text-3xl font-black text-brand-700 tracking-wider font-mono select-all">{generatedCode}</span>
                                                 <div className="text-xs text-gray-400 mt-1 group-hover:text-brand-500"><i className="fas fa-copy mr-1"></i> Chạm để sao chép</div>
                                             </div>
-                                            <p className="text-xs text-gray-500">Hãy gửi mã này cho khách hàng (qua Chat, Email...).<br/>Khách sẽ tự nhập mã để nhận điểm.</p>
                                         </div>
                                     )}
                                 </div>
@@ -561,51 +414,14 @@
 
                         {activeTab === 'list' && (
                             <div className="animate-fade-in">
-                                <div className="flex justify-between items-center mb-6">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                                     <h3 className="text-xl font-bold text-brand-900">Danh sách thành viên ({usersList.length})</h3>
-                                    <button 
-                                        onClick={handleExportExcel}
-                                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition flex items-center shadow-md"
-                                    >
-                                        <i className="fas fa-file-excel mr-2"></i> Xuất Excel
-                                    </button>
+                                    <button onClick={handleExportExcel} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition flex items-center shadow-md"><i className="fas fa-file-excel mr-2"></i> Xuất Excel</button>
                                 </div>
                                 <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
-                                    <table className="w-full text-left min-w-[600px]">
-                                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
-                                            <tr>
-                                                <th className="p-4">Khách hàng</th>
-                                                <th className="p-4 text-center">Điểm tích lũy</th>
-                                                <th className="p-4 text-right">Ngày tham gia</th>
-                                                <th className="p-4 text-center">Thao tác</th>
-                                            </tr>
-                                        </thead>
+                                    <table className="w-full text-left min-w-[600px]"><thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider"><tr><th className="p-4">Khách hàng</th><th className="p-4 text-center">Điểm</th><th className="p-4 text-right">Ngày tham gia</th><th className="p-4 text-center">Thao tác</th></tr></thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {usersList.map((u) => (
-                                                <tr key={u.phoneNumber} className="hover:bg-brand-50 transition-colors">
-                                                    <td className="p-4">
-                                                        <div className="font-bold text-gray-800">{u.name}</div>
-                                                        <div className="text-gray-400 text-xs font-mono">{u.phoneNumber}</div>
-                                                    </td>
-                                                    <td className="p-4 text-center">
-                                                        <span className="bg-brand-100 text-brand-800 px-3 py-1 rounded-full font-bold text-sm">{u.currentPoints}</span>
-                                                    </td>
-                                                    <td className="p-4 text-right text-gray-500 text-sm">
-                                                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '-'}
-                                                    </td>
-                                                    <td className="p-4 text-center">
-                                                        <button 
-                                                            onClick={() => openAdjustModal(u)}
-                                                            className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
-                                                        >
-                                                            <i className="fas fa-edit mr-1"></i> Chỉnh điểm
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {usersList.length === 0 && (
-                                                <tr><td colSpan="4" className="p-8 text-center text-gray-400">Chưa có dữ liệu khách hàng</td></tr>
-                                            )}
+                                            {usersList.map((u) => (<tr key={u.phoneNumber} className="hover:bg-brand-50 transition-colors"><td className="p-4"><div className="font-bold text-gray-800">{u.name}</div><div className="text-gray-400 text-xs font-mono">{u.phoneNumber} {u.email && `• ${u.email}`}</div></td><td className="p-4 text-center"><span className="bg-brand-100 text-brand-800 px-3 py-1 rounded-full font-bold text-sm">{u.currentPoints}</span></td><td className="p-4 text-right text-gray-500 text-sm">{u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '-'}</td><td className="p-4 text-center"><button onClick={() => openAdjustModal(u)} className="text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold transition"><i className="fas fa-edit mr-1"></i> Chỉnh điểm</button></td></tr>))}
                                         </tbody>
                                     </table>
                                 </div>
@@ -614,62 +430,11 @@
 
                         {activeTab === 'requests' && (
                             <div className="animate-fade-in">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-bold text-brand-900">Yêu cầu đổi quà tặng ({redemptionsList.length})</h3>
-                                    <p className="text-sm text-gray-500">Quản lý và giao quà khách hàng online</p>
-                                </div>
+                                <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-brand-900">Yêu cầu đổi quà tặng</h3></div>
                                 <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
-                                    <table className="w-full text-left min-w-[800px]">
-                                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
-                                            <tr>
-                                                <th className="p-4 w-1/3">Người nhận & Địa chỉ giao hàng</th>
-                                                <th className="p-4">Phần quà</th>
-                                                <th className="p-4 text-center">Thời gian</th>
-                                                <th className="p-4 text-center">Trạng thái</th>
-                                                <th className="p-4 text-center">Thao tác</th>
-                                            </tr>
-                                        </thead>
+                                    <table className="w-full text-left min-w-[800px]"><thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider"><tr><th className="p-4 w-1/3">Người nhận & Địa chỉ</th><th className="p-4">Phần quà</th><th className="p-4 text-center">Thời gian</th><th className="p-4 text-center">Trạng thái</th><th className="p-4 text-center">Thao tác</th></tr></thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {redemptionsList.map((r) => (
-                                                <tr key={r.id} className="hover:bg-brand-50 transition-colors">
-                                                    <td className="p-4">
-                                                        <div className="font-bold text-gray-800">{r.userName}</div>
-                                                        <div className="text-gray-600 text-xs mt-1">
-                                                            <i className="fas fa-phone-alt w-4 text-center"></i> <span className="font-mono">{r.shippingPhone || r.phoneNumber}</span>
-                                                        </div>
-                                                        {r.shippingAddress && (
-                                                            <div className="text-gray-500 text-xs mt-1 leading-relaxed bg-yellow-50 p-2 rounded border border-yellow-100">
-                                                                <i className="fas fa-map-marker-alt w-4 text-center text-red-400"></i> {r.shippingAddress}
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <div className="font-bold text-brand-700">{r.rewardName}</div>
-                                                        <div className="text-orange-500 text-xs font-bold">-{r.points} điểm</div>
-                                                    </td>
-                                                    <td className="p-4 text-center text-gray-500 text-sm">
-                                                        {r.timestamp ? new Date(r.timestamp.seconds * 1000).toLocaleString('vi-VN') : '-'}
-                                                    </td>
-                                                    <td className="p-4 text-center">
-                                                        <span className={`px-3 py-1 rounded-full font-bold text-xs ${r.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                                                            {r.status === 'pending' ? 'Chờ gửi hàng' : 'Đã giao quà'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 text-center">
-                                                        {r.status === 'pending' && (
-                                                            <button 
-                                                                onClick={() => handleUpdateRedemptionStatus(r.id, 'completed')}
-                                                                className="text-white bg-brand-600 hover:bg-brand-700 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
-                                                            >
-                                                                <i className="fas fa-check mr-1"></i> Xong
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {redemptionsList.length === 0 && (
-                                                <tr><td colSpan="5" className="p-8 text-center text-gray-400">Chưa có yêu cầu đổi quà nào</td></tr>
-                                            )}
+                                            {redemptionsList.map((r) => (<tr key={r.id} className="hover:bg-brand-50 transition-colors"><td className="p-4"><div className="font-bold text-gray-800">{r.userName}</div><div className="text-gray-600 text-xs mt-1"><i className="fas fa-phone-alt w-4 text-center"></i> <span className="font-mono">{r.shippingPhone || r.phoneNumber}</span></div>{r.shippingEmail && <div className="text-blue-600 text-xs mt-1"><i className="fas fa-envelope w-4 text-center"></i> <span>{r.shippingEmail}</span></div>}{r.shippingAddress && <div className="text-gray-500 text-xs mt-1 leading-relaxed bg-yellow-50 p-2 rounded border border-yellow-100"><i className="fas fa-map-marker-alt w-4 text-center text-red-400"></i> {r.shippingAddress}</div>}</td><td className="p-4"><div className="font-bold text-brand-700">{r.rewardName}</div><div className="text-orange-500 text-xs font-bold">-{r.points} điểm</div></td><td className="p-4 text-center text-gray-500 text-sm">{r.timestamp ? new Date(r.timestamp.seconds * 1000).toLocaleString('vi-VN') : '-'}</td><td className="p-4 text-center"><span className={`px-3 py-1 rounded-full font-bold text-xs ${r.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>{r.status === 'pending' ? 'Chờ gửi hàng' : 'Đã giao quà'}</span></td><td className="p-4 text-center">{r.status === 'pending' && <button onClick={() => handleUpdateRedemptionStatus(r.id, 'completed')} className="text-white bg-brand-600 hover:bg-brand-700 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"><i className="fas fa-check mr-1"></i> Xong</button>}</td></tr>))}
                                         </tbody>
                                     </table>
                                 </div>
@@ -677,67 +442,17 @@
                         )}
                     </div>
 
-                    {/* MODAL CHỈNH ĐIỂM */}
                     {showAdjustModal && adjustTargetUser && (
                         <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 animate-fade-in">
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                                <div className="bg-brand-600 p-4 text-white flex justify-between items-center">
-                                    <h3 className="font-bold">Chỉnh sửa điểm</h3>
-                                    <button onClick={() => setShowAdjustModal(false)} className="hover:text-brand-200"><i className="fas fa-times"></i></button>
-                                </div>
+                                <div className="bg-brand-600 p-4 text-white flex justify-between items-center"><h3 className="font-bold">Chỉnh sửa điểm</h3><button onClick={() => setShowAdjustModal(false)}><i className="fas fa-times"></i></button></div>
                                 <div className="p-6">
-                                    <p className="text-sm text-gray-500 mb-4">Khách hàng: <span className="font-bold text-gray-800">{adjustTargetUser.name}</span></p>
-                                    
+                                    <p className="text-sm text-gray-500 mb-4">Khách: <strong className="text-gray-800">{adjustTargetUser.name}</strong></p>
                                     <form onSubmit={handleDirectAdjustment} className="space-y-4">
-                                        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setAdjustType('add')}
-                                                className={`flex-1 py-2 rounded-md font-bold text-sm transition ${adjustType === 'add' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500'}`}
-                                            >
-                                                <i className="fas fa-plus mr-1"></i> Cộng thêm
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setAdjustType('sub')}
-                                                className={`flex-1 py-2 rounded-md font-bold text-sm transition ${adjustType === 'sub' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}
-                                            >
-                                                <i className="fas fa-minus mr-1"></i> Trừ bớt
-                                            </button>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Số điểm</label>
-                                            <input 
-                                                type="number" 
-                                                value={adjustAmount}
-                                                onChange={e => setAdjustAmount(e.target.value)}
-                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-bold text-lg"
-                                                placeholder="0"
-                                                autoFocus
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Lý do / Ghi chú</label>
-                                            <input 
-                                                type="text" 
-                                                value={adjustNote}
-                                                onChange={e => setAdjustNote(e.target.value)}
-                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"
-                                                placeholder={adjustType === 'add' ? "VD: Thưởng thêm, Bù đơn cũ..." : "VD: Đổi quà, Sai sót..."}
-                                            />
-                                        </div>
-
-                                        <div className="pt-2">
-                                            <button 
-                                                type="submit" 
-                                                disabled={isSubmitting}
-                                                className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition ${adjustType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-500 hover:bg-orange-600'}`}
-                                            >
-                                                {isSubmitting ? 'Đang lưu...' : 'Xác Nhận'}
-                                            </button>
-                                        </div>
+                                        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg"><button type="button" onClick={() => setAdjustType('add')} className={`flex-1 py-2 rounded-md font-bold text-sm transition ${adjustType === 'add' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500'}`}>Cộng thêm</button><button type="button" onClick={() => setAdjustType('sub')} className={`flex-1 py-2 rounded-md font-bold text-sm transition ${adjustType === 'sub' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}>Trừ bớt</button></div>
+                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Số điểm</label><input type="number" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-bold text-lg bg-gray-50" autoFocus/></div>
+                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Ghi chú</label><input type="text" value={adjustNote} onChange={e => setAdjustNote(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-gray-50" /></div>
+                                        <button type="submit" disabled={isSubmitting} className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition ${adjustType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-500 hover:bg-orange-600'}`}>{isSubmitting ? 'Đang lưu...' : 'Xác Nhận'}</button>
                                     </form>
                                 </div>
                             </div>
@@ -747,20 +462,36 @@
             );
         };
 
-        const CustomerView = ({ user, showNotify }) => {
+        const CustomerView = ({ user, showNotify, goHome }) => {
             const [mode, setMode] = useState('login'); 
             const [phone, setPhone] = useState('');
             const [name, setName] = useState('');
+            const [email, setEmail] = useState('');
             const [userData, setUserData] = useState(null);
             const [history, setHistory] = useState([]);
             const [voucherCode, setVoucherCode] = useState(''); 
             const [isProcessing, setIsProcessing] = useState(false);
             
             const [confirmReward, setConfirmReward] = useState(null); 
-            const [shippingAddress, setShippingAddress] = useState('');
             const [shippingPhone, setShippingPhone] = useState('');
+            const [shippingEmail, setShippingEmail] = useState('');
 
-            const [activeTab, setActiveTab] = useState('dashboard');
+            // State lưu trữ dữ liệu Tỉnh/Thành
+            const [vnProvinces, setVnProvinces] = useState([]);
+            const [prov, setProv] = useState('');
+            const [dist, setDist] = useState('');
+            const [ward, setWard] = useState('');
+            const [street, setStreet] = useState('');
+
+            const [activeTab, setActiveTab] = useState('home');
+
+            // Fetch API Tỉnh/Thành Việt Nam
+            useEffect(() => {
+                fetch('https://provinces.open-api.vn/api/?depth=3')
+                    .then(res => res.json())
+                    .then(data => setVnProvinces(data))
+                    .catch(err => console.error("Lỗi tải API tỉnh thành:", err));
+            }, []);
 
             useEffect(() => {
                 if (mode === 'dashboard' && userData) {
@@ -780,34 +511,10 @@
             }, [mode, userData?.phoneNumber]);
 
             const getCardStyle = (points) => {
-                if (points > 7000) return {
-                    bg: 'bg-gradient-to-br from-purple-900 via-fuchsia-800 to-purple-700',
-                    icon: 'fa-gem',
-                    name: 'Lá Cẩm (Diamond)',
-                    textColor: 'text-fuchsia-100',
-                    subText: 'THÀNH VIÊN KIM CƯƠNG'
-                };
-                if (points > 3000) return {
-                    bg: 'bg-gradient-to-br from-amber-700 via-yellow-600 to-amber-500',
-                    icon: 'fa-crown',
-                    name: 'Nghệ (Gold)',
-                    textColor: 'text-amber-100',
-                    subText: 'THÀNH VIÊN VÀNG'
-                };
-                if (points > 1500) return {
-                    bg: 'bg-gradient-to-br from-rose-900 via-pink-700 to-rose-600',
-                    icon: 'fa-star',
-                    name: 'Củ Dền (Silver)',
-                    textColor: 'text-rose-100',
-                    subText: 'THÀNH VIÊN BẠC'
-                };
-                return {
-                    bg: 'bg-gradient-to-br from-brand-800 to-brand-600',
-                    icon: 'fa-leaf',
-                    name: 'Lá Mây (Member)',
-                    textColor: 'text-brand-100',
-                    subText: 'THÀNH VIÊN THÂN THIẾT'
-                };
+                if (points > 7000) return { bg: 'bg-gradient-to-br from-purple-900 via-fuchsia-800 to-purple-700', icon: 'fa-gem', name: 'Kim Cương', tier: 'Lá Cẩm', textColor: 'text-fuchsia-100' };
+                if (points > 3000) return { bg: 'bg-gradient-to-br from-amber-700 via-yellow-600 to-amber-500', icon: 'fa-crown', name: 'Hạng Vàng', tier: 'Nghệ', textColor: 'text-amber-100' };
+                if (points > 1500) return { bg: 'bg-gradient-to-br from-rose-900 via-pink-700 to-rose-600', icon: 'fa-star', name: 'Hạng Bạc', tier: 'Củ Dền', textColor: 'text-rose-100' };
+                return { bg: 'bg-gradient-to-br from-brand-800 to-brand-600', icon: 'fa-leaf', name: 'Thành Viên Mới', tier: 'Lá Mây', textColor: 'text-brand-100' };
             };
 
             const handleRegister = async (e) => {
@@ -820,20 +527,21 @@
                         showNotify('Số điện thoại này đã đăng ký. Vui lòng đăng nhập.', 'error');
                         setMode('login');
                     } else {
-                        const newUser = {
-                            name: name,
-                            phoneNumber: phone,
-                            currentPoints: 0,
-                            createdAt: new Date().toISOString()
+                        // Email tùy chọn, không ép buộc nhập địa chỉ lúc đăng ký
+                        const newUser = { 
+                            name: name, 
+                            phoneNumber: phone, 
+                            email: email, 
+                            address: '', address_prov: '', address_dist: '', address_ward: '', address_street: '',
+                            currentPoints: 0, 
+                            createdAt: new Date().toISOString() 
                         };
                         await userRef.set(newUser);
                         showNotify('Đăng ký thành công!');
                         setUserData(newUser);
                         setMode('dashboard');
                     }
-                } catch (err) {
-                    showNotify('Lỗi: ' + err.message, 'error');
-                }
+                } catch (err) { showNotify('Lỗi: ' + err.message, 'error'); }
                 setIsProcessing(false);
             };
 
@@ -846,14 +554,11 @@
                     if (docSnap.exists) {
                         setUserData(docSnap.data());
                         setMode('dashboard');
-                        showNotify('Xin chào ' + docSnap.data().name);
                     } else {
                         showNotify('Số điện thoại chưa đăng ký.', 'error');
                         setMode('register');
                     }
-                } catch (err) {
-                    showNotify('Lỗi: ' + err.message, 'error');
-                }
+                } catch (err) { showNotify('Lỗi: ' + err.message, 'error'); }
                 setIsProcessing(false);
             };
 
@@ -867,409 +572,376 @@
                     const voucherSnap = await voucherRef.get();
 
                     if (!voucherSnap.exists) throw new Error("Mã không hợp lệ hoặc không tồn tại");
-
                     const voucherData = voucherSnap.data();
                     if (voucherData.status !== 'active') throw new Error("Mã này đã được sử dụng");
 
                     const newPoints = (userData.currentPoints || 0) + voucherData.value;
                     
-                    await voucherRef.update({
-                        status: 'used',
-                        usedBy: userData.phoneNumber,
-                        usedAt: new Date().toISOString()
-                    });
-
-                    await getUserRef(userData.phoneNumber).update({
-                        currentPoints: newPoints
-                    });
-
-                    await getCollectionRef('transactions').add({
-                        phoneNumber: userData.phoneNumber,
-                        amount: voucherData.value,
-                        type: 'earn_code',
-                        note: 'Nhập mã thưởng',
-                        rewardCode: code,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    await voucherRef.update({ status: 'used', usedBy: userData.phoneNumber, usedAt: new Date().toISOString() });
+                    await getUserRef(userData.phoneNumber).update({ currentPoints: newPoints });
+                    await getCollectionRef('transactions').add({ phoneNumber: userData.phoneNumber, amount: voucherData.value, type: 'earn_code', note: 'Nhập mã thưởng', rewardCode: code, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
 
                     setVoucherCode('');
-                    showNotify(`Thành công! Cộng ${voucherData.value} điểm.`, 'success');
-
-                } catch (error) {
-                    showNotify(error.message, 'error');
-                }
+                    showNotify(`Tuyệt vời! Nhận thành công ${voucherData.value} điểm 🎉`, 'success');
+                } catch (error) { showNotify(error.message, 'error'); }
                 setIsProcessing(false);
             };
 
-            // Hàm xử lý khi xác nhận đổi quà
             const processRewardRedemption = async () => {
                 if (!confirmReward || !userData) return;
                 
-                // Kiểm tra địa chỉ
-                if (!shippingAddress.trim()) {
-                    showNotify("Vui lòng nhập địa chỉ để cửa hàng giao quà nhé!", 'error');
-                    return;
+                // Kiểm tra bắt buộc điền đủ thông tin khi đổi quà
+                if (!shippingEmail.trim() || !shippingPhone.trim() || !prov || !dist || !ward || !street.trim()) {
+                    return showNotify("Vui lòng điền đầy đủ Email, SĐT và chọn Địa chỉ để nhận quà!", 'error');
                 }
 
                 setIsProcessing(true);
                 try {
                     const currentPoints = userData.currentPoints || 0;
-                    if (currentPoints < confirmReward.points) {
-                        throw new Error("Bạn không đủ điểm để đổi quà này.");
-                    }
+                    if (currentPoints < confirmReward.points) throw new Error("Bạn không đủ điểm để đổi quà này.");
 
                     const newPoints = currentPoints - confirmReward.points;
+                    const fullAddress = `${street}, ${ward}, ${dist}, ${prov}`;
 
-                    // 1. Cập nhật điểm & lưu lại địa chỉ mới cho user
-                    await getUserRef(userData.phoneNumber).update({
-                        currentPoints: newPoints,
-                        address: shippingAddress // Tự động lưu địa chỉ cho lần sau
+                    // Lưu tự động các cấu trúc địa chỉ cho lần đổi quà sau
+                    await getUserRef(userData.phoneNumber).update({ 
+                        currentPoints: newPoints, 
+                        address: fullAddress,
+                        address_prov: prov,
+                        address_dist: dist,
+                        address_ward: ward,
+                        address_street: street, 
+                        email: shippingEmail 
                     });
 
-                    // 2. Thêm vào Lịch sử giao dịch của khách
-                    await getCollectionRef('transactions').add({
-                        phoneNumber: userData.phoneNumber,
-                        amount: confirmReward.points,
-                        type: 'use_reward',
-                        note: 'Đổi quà: ' + confirmReward.name,
-                        rewardId: confirmReward.id,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    await getCollectionRef('transactions').add({ phoneNumber: userData.phoneNumber, amount: confirmReward.points, type: 'use_reward', note: 'Đổi quà: ' + confirmReward.name, rewardId: confirmReward.id, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                    await getCollectionRef('redemptions').add({ phoneNumber: userData.phoneNumber, userName: userData.name, shippingPhone: shippingPhone, shippingEmail: shippingEmail, shippingAddress: fullAddress, rewardId: confirmReward.id, rewardName: confirmReward.name, points: confirmReward.points, status: 'pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
 
-                    // 3. Gửi yêu cầu qua tab Admin kèm thông tin giao hàng
-                    await getCollectionRef('redemptions').add({
-                        phoneNumber: userData.phoneNumber,
-                        userName: userData.name,
-                        shippingPhone: shippingPhone || userData.phoneNumber,
-                        shippingAddress: shippingAddress,
-                        rewardId: confirmReward.id,
-                        rewardName: confirmReward.name,
-                        points: confirmReward.points,
-                        status: 'pending',
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    showNotify(`Yêu cầu đổi quà đã được ghi nhận. Quà sẽ sớm được giao!`, 'success');
-                    setConfirmReward(null); // Đóng modal
-                } catch (error) {
-                    showNotify(error.message, 'error');
-                }
+                    showNotify(`Đổi quà thành công! Quà sẽ sớm được gửi đến bạn 🎁`, 'success');
+                    setConfirmReward(null);
+                    setActiveTab('history'); 
+                } catch (error) { showNotify(error.message, 'error'); }
                 setIsProcessing(false);
             };
 
             const openRewardModal = (reward) => {
                 setConfirmReward(reward);
                 setShippingPhone(userData.phoneNumber);
-                setShippingAddress(userData.address || ''); // Điền sẵn địa chỉ nếu đã có
+                setShippingEmail(userData.email || '');
+                setProv(userData.address_prov || '');
+                setDist(userData.address_dist || '');
+                setWard(userData.address_ward || '');
+                setStreet(userData.address_street || '');
             };
 
-            if (mode === 'login') {
+            const handleLogout = () => { setUserData(null); setMode('login'); setActiveTab('home'); setPhone(''); setName(''); setEmail(''); setProv(''); setDist(''); setWard(''); setStreet(''); };
+
+            if (mode === 'login' || mode === 'register') {
                 return (
-                    <div className="max-w-md mx-auto glass-panel p-8 rounded-3xl animate-fade-in">
+                    <div className="max-w-md mx-auto p-8 bg-white/90 backdrop-blur-md shadow-2xl rounded-[2rem] border border-gray-100 animate-fade-in mt-4">
                         <div className="text-center mb-8 flex flex-col items-center">
-                            <BrandLogo size="md" />
-                            <h3 className="text-2xl font-bold text-brand-900 mb-2 mt-4 font-serif">Đăng Nhập</h3>
-                            <p className="text-gray-500 text-sm">Nhập số điện thoại để xem thẻ thành viên</p>
+                            <BrandLogo size="lg" />
+                            <h3 className="text-3xl font-bold text-brand-900 mb-2 mt-6 font-serif">{mode === 'login' ? 'Xin Chào!' : 'Tham Gia'}</h3>
+                            <p className="text-gray-500">{mode === 'login' ? 'Đăng nhập để xem thẻ và ưu đãi' : 'Mở thẻ thành viên Lá Mây ngay'}</p>
                         </div>
-                        <form onSubmit={handleLogin} className="space-y-5">
-                            <div className="relative">
-                                <i className="fas fa-phone absolute left-4 top-4 text-gray-400"></i>
-                                <input 
-                                    type="tel" 
-                                    value={phone}
-                                    onChange={e => setPhone(e.target.value)}
-                                    className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none bg-white/70"
-                                    placeholder="Số điện thoại của bạn"
-                                    required
-                                />
-                            </div>
-                            <button disabled={isProcessing} type="submit" className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
-                                {isProcessing ? 'Đang kiểm tra...' : 'Tiếp Tục'}
+                        
+                        {mode === 'login' ? (
+                            <form onSubmit={handleLogin} className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Số điện thoại</label>
+                                    <div className="relative">
+                                        <i className="fas fa-mobile-alt absolute left-4 top-4 text-gray-400 text-lg"></i>
+                                        <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-3.5 pl-11 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50 font-bold tracking-wide" placeholder="0912..." required />
+                                    </div>
+                                </div>
+                                <button disabled={isProcessing} type="submit" className="w-full bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200 text-lg mt-2">
+                                    {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Đăng Nhập'}
+                                </button>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleRegister} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Họ và Tên (*)</label>
+                                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full p-3.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50 font-medium" placeholder="VD: Nguyễn Văn A" required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Số điện thoại (*)</label>
+                                    <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-3.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50 font-bold tracking-wide" placeholder="0912..." required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Email (Tùy chọn)</label>
+                                    <div className="relative">
+                                        <i className="fas fa-envelope absolute left-4 top-4 text-gray-400 text-lg"></i>
+                                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 pl-11 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50 font-medium" placeholder="email@example.com" />
+                                    </div>
+                                </div>
+                                <button disabled={isProcessing} type="submit" className="w-full bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200 text-lg mt-2">
+                                    {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Mở Thẻ Ngay'}
+                                </button>
+                            </form>
+                        )}
+
+                        <div className="mt-8 text-center">
+                            <button onClick={() => setMode(mode === 'login' ? 'register' : 'login')} className="text-brand-600 font-bold hover:underline px-4 py-2 bg-brand-50 rounded-full transition">
+                                {mode === 'login' ? 'Chưa có thẻ? Đăng ký ngay' : 'Đã có thẻ? Quay lại đăng nhập'}
                             </button>
-                        </form>
-                        <div className="mt-6 text-center border-t border-gray-200 pt-4">
-                            <button onClick={() => setMode('register')} className="text-brand-600 font-bold hover:underline">Đăng ký thành viên mới</button>
                         </div>
                     </div>
                 );
             }
 
-            if (mode === 'register') {
-                return (
-                    <div className="max-w-md mx-auto glass-panel p-8 rounded-3xl animate-fade-in">
-                        <div className="text-center mb-8 flex flex-col items-center">
-                            <BrandLogo size="md" />
-                            <h3 className="text-2xl font-bold text-brand-900 mb-2 mt-4 font-serif">Đăng Ký Mới</h3>
-                            <p className="text-gray-500 text-sm">Trở thành thành viên của Lá Mây</p>
-                        </div>
-                        <form onSubmit={handleRegister} className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Họ tên</label>
-                                <input 
-                                    type="text" 
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none bg-white/70"
-                                    placeholder="VD: Nguyễn Văn A"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Số điện thoại</label>
-                                <input 
-                                    type="tel" 
-                                    value={phone}
-                                    onChange={e => setPhone(e.target.value)}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none bg-white/70"
-                                    placeholder="0912..."
-                                    required
-                                />
-                            </div>
-                            <button disabled={isProcessing} type="submit" className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
-                                {isProcessing ? 'Đang xử lý...' : 'Hoàn Tất'}
-                            </button>
-                        </form>
-                        <div className="mt-6 text-center">
-                            <button onClick={() => setMode('login')} className="text-gray-500 text-sm hover:text-gray-700">Quay lại đăng nhập</button>
-                        </div>
-                    </div>
-                );
-            }
-
-            // Customer Dashboard
             const cardStyle = getCardStyle(userData.currentPoints || 0);
+            const nextTier = getNextTierInfo(userData.currentPoints || 0);
 
             return (
-                <div className="max-w-lg mx-auto space-y-6 animate-fade-in relative">
-                    {/* Tabs Navigation */}
-                    <div className="flex bg-white rounded-2xl p-1 shadow-sm border border-gray-100">
-                        <button 
-                            onClick={() => setActiveTab('dashboard')} 
-                            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-brand-50 text-brand-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
-                        >
-                            <i className="fas fa-id-card mr-2"></i>Thẻ & Tích Điểm
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('rewards')} 
-                            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'rewards' ? 'bg-brand-50 text-brand-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
-                        >
-                            <i className="fas fa-gift mr-2"></i>Đổi Quà Tặng
-                        </button>
+                <div className="max-w-lg mx-auto relative pb-20">
+                    
+                    {/* CUSTOMER HEADER (Chỉ hiện trong Dashboard) */}
+                    <div className="bg-white/90 backdrop-blur-md px-6 py-5 shadow-sm sm:rounded-3xl border border-gray-100 flex justify-between items-center mb-6 z-30 sticky top-2 sm:mx-0 -mx-4 sm:mt-0 -mt-8">
+                        <div>
+                            <p className="text-gray-500 text-sm mb-0.5">{getGreeting()},</p>
+                            <h2 className="text-xl font-black text-gray-800 tracking-tight">{userData.name}</h2>
+                        </div>
+                        <div className="flex gap-3 items-center">
+                            <div className="w-12 h-12 bg-gradient-to-tr from-brand-100 to-brand-50 rounded-full flex items-center justify-center text-brand-700 font-black text-xl shadow-sm border border-brand-100">
+                                {userData.name.charAt(0).toUpperCase()}
+                            </div>
+                        </div>
                     </div>
 
-                    {activeTab === 'dashboard' && (
-                        <div className="space-y-6 animate-fade-in">
-                            {/* Membership Card */}
-                            <div className={`relative ${cardStyle.bg} rounded-3xl p-8 text-white shadow-2xl overflow-hidden min-h-[220px] flex flex-col justify-between transform transition hover:scale-[1.02] duration-500`}>
-                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
-                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-10 rounded-full blur-xl"></div>
+                    {/* TABS CONTENT */}
+                    <div className="space-y-6">
+                        {activeTab === 'home' && (
+                            <div className="animate-slide-up space-y-6">
+                                {/* Thẻ thành viên */}
+                                <div className={`relative ${cardStyle.bg} rounded-[2rem] p-7 text-white shadow-xl shadow-brand-200/50 overflow-hidden min-h-[220px] flex flex-col justify-between`}>
+                                    <div className="absolute -top-10 -right-10 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl"></div>
+                                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-black opacity-10 rounded-full blur-xl"></div>
+                                    
+                                    <div className="flex justify-between items-start relative z-10">
+                                        <div>
+                                            <p className={`text-[10px] font-bold tracking-widest mt-1 opacity-70 uppercase mb-1`}>{cardStyle.name}</p>
+                                            <h2 className="text-2xl font-serif tracking-wide opacity-95">Hạng {cardStyle.tier}</h2>
+                                        </div>
+                                        <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md shadow-inner">
+                                            <i className={`fas ${cardStyle.icon} text-2xl drop-shadow-md`}></i>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative z-10 mt-6 flex justify-between items-end">
+                                        <div className="flex items-end gap-2">
+                                            <h1 className="text-6xl font-black drop-shadow-md leading-none">{userData.currentPoints}</h1>
+                                            <span className="text-lg font-medium mb-1 opacity-90">điểm</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 relative z-10">
+                                        <p className="text-xs font-mono opacity-80 tracking-widest">{userData.phoneNumber.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')}</p>
+                                    </div>
+                                </div>
+
+                                {/* Gamification */}
+                                <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+                                    <div className="flex justify-between text-sm mb-3">
+                                        <span className="font-bold text-gray-700 flex items-center gap-2"><i className="fas fa-trophy text-amber-500"></i> Tiến trình hạng</span>
+                                        <span className="font-black text-brand-600">{nextTier.name !== 'Max' ? `Còn ${nextTier.remain} điểm` : 'Hạng tối đa'}</span>
+                                    </div>
+                                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className={`h-full ${nextTier.bg} rounded-full transition-all duration-1000 ease-out`} style={{ width: `${nextTier.percent}%` }}></div>
+                                    </div>
+                                    {nextTier.name !== 'Max' && (
+                                        <p className="text-xs text-gray-400 mt-3 text-right">Nâng lên hạng <strong className={`font-black ${nextTier.color}`}>{nextTier.name}</strong></p>
+                                    )}
+                                </div>
+
+                                {/* Nạp Mã Thưởng */}
+                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-300 to-brand-500"></div>
+                                    <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center"><i className="fas fa-qrcode"></i></div>
+                                        Tích điểm qua mã
+                                    </h3>
+                                    <form onSubmit={handleRedeemCode} className="flex gap-2">
+                                        <input type="text" value={voucherCode} onChange={e => setVoucherCode(e.target.value)} className="flex-1 p-3.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none uppercase font-bold text-brand-800 tracking-wider bg-gray-50/50" placeholder="NHẬP MÃ TẠI ĐÂY" />
+                                        <button disabled={isProcessing} type="submit" className="bg-brand-600 text-white px-6 rounded-2xl font-bold hover:bg-brand-700 transition shadow-md">{isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Nạp'}</button>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'rewards' && (
+                            <div className="animate-slide-up space-y-6">
+                                <div className="bg-gradient-to-r from-brand-600 to-brand-500 rounded-3xl p-6 text-white shadow-lg shadow-brand-200 text-center relative overflow-hidden">
+                                    <div className="absolute -right-4 -top-4 opacity-10 text-6xl"><i className="fas fa-gift"></i></div>
+                                    <p className="text-brand-100 text-sm font-medium mb-1">Điểm có thể dùng</p>
+                                    <h2 className="text-4xl font-black">{userData.currentPoints}</h2>
+                                </div>
                                 
-                                <div className="flex justify-between items-start relative z-10">
-                                    <div>
-                                        <h2 className="text-xl font-serif tracking-wide opacity-95">{cardStyle.name}</h2>
-                                        <p className={`text-xs tracking-widest mt-1 opacity-80 uppercase`}>{cardStyle.subText}</p>
-                                    </div>
-                                    <i className={`fas ${cardStyle.icon} text-4xl opacity-30`}></i>
-                                </div>
-
-                                <div className="relative z-10 mt-6">
-                                    <div className="flex items-end gap-3">
-                                        <h1 className="text-6xl font-bold drop-shadow-md">{userData.currentPoints}</h1>
-                                        <span className="text-xl font-medium mb-2 opacity-80">điểm</span>
-                                    </div>
-                                    {/* Progress bar simulation */}
-                                    <div className="w-full h-1.5 bg-black/20 rounded-full mt-2 overflow-hidden">
-                                        <div className="h-full bg-white/50 w-3/4"></div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-between items-end relative z-10 mt-4">
-                                    <div>
-                                        <p className="text-xs uppercase opacity-70">Chủ thẻ</p>
-                                        <p className="font-bold text-lg tracking-wide shadow-black drop-shadow-sm">{userData.name}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-mono opacity-80">{userData.phoneNumber}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* REDEEM CODE SECTION */}
-                            <div className="bg-white p-6 rounded-3xl shadow-lg border border-brand-100 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
-                                <h3 className="text-lg font-bold text-brand-900 mb-4 flex items-center gap-2">
-                                    <i className="fas fa-qrcode text-brand-500"></i> Nhập Mã Thưởng
-                                </h3>
-                                <form onSubmit={handleRedeemCode} className="flex gap-2">
-                                    <input 
-                                        type="text" 
-                                        value={voucherCode}
-                                        onChange={e => setVoucherCode(e.target.value)}
-                                        className="flex-1 p-3 border border-brand-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none uppercase font-bold text-brand-800 placeholder-brand-300"
-                                        placeholder="VD: LAMAY-X1Y2"
-                                    />
-                                    <button disabled={isProcessing} type="submit" className="bg-brand-600 text-white px-6 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
-                                        {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Nạp'}
-                                    </button>
-                                </form>
-                            </div>
-
-                            {/* Transaction History */}
-                            <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-brand-50">
-                                <h3 className="text-lg font-bold text-brand-900 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
-                                    <i className="fas fa-history text-brand-500"></i> Lịch sử giao dịch
-                                </h3>
-                                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                                    {history.length > 0 ? history.map((t, idx) => {
-                                        const isMinus = t.type === 'use' || t.type === 'use_direct' || t.type === 'use_reward';
+                                <div className="space-y-6">
+                                    {[
+                                        { label: 'Thẻ Lá Mây (Mọi thành viên)', tierPoints: 0, color: 'text-brand-600', icon: 'fa-leaf' },
+                                        { label: 'Thẻ Củ Dền (Mở khóa > 1.500 đ)', tierPoints: 1500, color: 'text-rose-600', icon: 'fa-star' },
+                                        { label: 'Thẻ Nghệ (Mở khóa > 3.000 đ)', tierPoints: 3000, color: 'text-amber-600', icon: 'fa-crown' },
+                                        { label: 'Thẻ Lá Cẩm (Đặc quyền > 7.000 đ)', tierPoints: 7000, color: 'text-purple-600', icon: 'fa-gem' }
+                                    ].map((group) => {
+                                        const isUnlocked = (userData.currentPoints || 0) >= group.tierPoints;
+                                        const groupRewards = REWARDS_CATALOG.filter(r => r.tier === group.tierPoints);
+                                        if (groupRewards.length === 0) return null;
                                         return (
-                                            <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-50 hover:bg-brand-50 transition">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isMinus ? 'bg-orange-100 text-orange-600' : 'bg-brand-100 text-brand-600'}`}>
-                                                        <i className={`fas ${isMinus ? 'fa-minus' : 'fa-plus'}`}></i>
+                                            <div key={group.tierPoints} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-50">
+                                                <div className={`flex items-center gap-2 mb-4 border-b border-gray-50 pb-3 ${isUnlocked ? group.color : 'text-gray-400'}`}>
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isUnlocked ? 'bg-current text-white' : 'bg-gray-100'}`}>
+                                                        <i className={`fas ${isUnlocked ? group.icon : 'fa-lock'} text-sm`}></i>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-bold text-gray-800 text-sm">{t.note || (t.type === 'earn_direct' ? 'Tích điểm tại quầy' : 'Giao dịch')}</p>
-                                                        <p className="text-xs text-gray-400">
-                                                            {t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleString('vi-VN') : 'Vừa xong'}
-                                                        </p>
-                                                    </div>
+                                                    <h4 className="font-bold text-sm uppercase tracking-wide">{group.label}</h4>
                                                 </div>
-                                                <div className={`font-bold text-lg ${isMinus ? 'text-orange-500' : 'text-brand-600'}`}>
-                                                    {isMinus ? '-' : '+'}{t.amount}
+                                                
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {groupRewards.map((reward) => {
+                                                        const canRedeem = isUnlocked && ((userData.currentPoints || 0) >= reward.points);
+                                                        return (
+                                                            <div key={reward.id} className={`relative rounded-2xl border p-4 flex flex-col items-center text-center transition-all ${canRedeem ? 'border-brand-100 bg-white shadow-sm' : 'border-gray-100 bg-gray-50/50'}`}>
+                                                                {!isUnlocked && (
+                                                                    <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 rounded-2xl flex items-center justify-center">
+                                                                        <div className="bg-gray-800/80 text-white text-[10px] px-2.5 py-1 rounded-full font-bold shadow-sm">
+                                                                            <i className="fas fa-lock mr-1"></i> Khóa
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                <div className={`text-4xl mb-3 ${isUnlocked ? '' : 'grayscale opacity-50'}`}>
+                                                                    <span className="drop-shadow-md">{reward.emoji}</span>
+                                                                </div>
+                                                                <h4 className={`font-bold text-xs h-8 mb-1 leading-tight ${isUnlocked ? 'text-gray-800' : 'text-gray-400'}`}>{reward.name}</h4>
+                                                                <p className={`font-black text-xs mb-3 px-2.5 py-1 rounded-full ${isUnlocked ? 'text-brand-600 bg-brand-50' : 'text-gray-400 bg-gray-100'}`}>{reward.points} đ</p>
+                                                                
+                                                                <button disabled={!canRedeem} onClick={() => openRewardModal(reward)} className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${canRedeem ? 'bg-brand-600 text-white shadow-md active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed z-0'}`}>
+                                                                    {canRedeem ? 'Đổi Quà' : (isUnlocked ? 'Thiếu điểm' : 'Đã khóa')}
+                                                                </button>
+                                                            </div>
+                                                        )
+                                                    })}
                                                 </div>
                                             </div>
                                         )
-                                    }) : (
-                                        <div className="text-center py-10 text-gray-400">
-                                            <i className="fas fa-leaf text-4xl mb-3 opacity-30"></i>
-                                            <p className="text-sm">Bạn chưa có giao dịch nào.</p>
-                                        </div>
-                                    )}
+                                    })}
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {activeTab === 'rewards' && (
-                        <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-brand-50 animate-fade-in">
-                            <div className="mb-6 text-center">
-                                <h3 className="text-xl font-bold text-brand-900 mb-1">Cửa Hàng Quà Tặng</h3>
-                                <p className="text-sm text-gray-500">Tích lũy điểm để mở khóa các đặc quyền cao cấp hơn.</p>
-                                <p className="text-sm font-medium mt-1">Điểm hiện tại: <span className="font-bold text-brand-600 text-lg">{userData.currentPoints}</span></p>
-                            </div>
-                            
-                            <div className="space-y-8">
-                                {[
-                                    { label: 'Thẻ Lá Mây (Mọi thành viên)', tierPoints: 0, color: 'text-brand-600', icon: 'fa-leaf' },
-                                    { label: 'Thẻ Củ Dền (Mở khóa > 1.500 đ)', tierPoints: 1500, color: 'text-rose-600', icon: 'fa-star' },
-                                    { label: 'Thẻ Nghệ (Mở khóa > 3.000 đ)', tierPoints: 3000, color: 'text-amber-600', icon: 'fa-crown' },
-                                    { label: 'Thẻ Lá Cẩm (Đặc quyền > 7.000 đ)', tierPoints: 7000, color: 'text-purple-600', icon: 'fa-gem' }
-                                ].map((group) => {
-                                    const isUnlocked = (userData.currentPoints || 0) >= group.tierPoints;
-                                    const groupRewards = REWARDS_CATALOG.filter(r => r.tier === group.tierPoints);
-                                    
+                        {activeTab === 'history' && (
+                            <div className="animate-slide-up space-y-4">
+                                <h3 className="font-bold text-gray-800 text-lg mb-2 px-2">Biến động điểm</h3>
+                                {history.length > 0 ? history.map((t, idx) => {
+                                    const isMinus = t.type === 'use' || t.type === 'use_direct' || t.type === 'use_reward';
                                     return (
-                                        <div key={group.tierPoints} className="relative">
-                                            <div className={`flex items-center gap-2 mb-3 border-b pb-2 ${isUnlocked ? group.color + ' border-brand-100' : 'text-gray-400 border-gray-100'}`}>
-                                                <i className={`fas ${isUnlocked ? group.icon : 'fa-lock'}`}></i>
-                                                <h4 className="font-bold text-sm uppercase tracking-wider">{group.label}</h4>
+                                        <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-3xl shadow-sm border border-gray-50">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg shadow-inner ${isMinus ? 'bg-orange-50 text-orange-500' : 'bg-brand-50 text-brand-600'}`}>
+                                                    <i className={`fas ${isMinus ? 'fa-gift' : 'fa-star'}`}></i>
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-gray-800 text-sm mb-0.5">{t.note || (t.type === 'earn_direct' ? 'Cộng điểm' : 'Giao dịch')}</p>
+                                                    <p className="text-xs text-gray-400 font-medium"><i className="far fa-clock mr-1"></i>{t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleString('vi-VN', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'}) : 'Vừa xong'}</p>
+                                                </div>
                                             </div>
-                                            
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {groupRewards.map((reward) => {
-                                                    const canRedeem = isUnlocked && ((userData.currentPoints || 0) >= reward.points);
-                                                    return (
-                                                        <div key={reward.id} className={`relative rounded-3xl border p-4 flex flex-col items-center text-center transition-all duration-300 ${canRedeem ? 'border-brand-200 bg-white shadow-md hover:shadow-xl hover:-translate-y-1' : 'border-gray-100 bg-gray-50/80 opacity-90'}`}>
-                                                            {!isUnlocked && (
-                                                                <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-10 rounded-3xl flex items-center justify-center">
-                                                                    <div className="bg-gray-800/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm font-medium">
-                                                                        <i className="fas fa-lock mr-1"></i> Khóa
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-5xl mb-4 shadow-inner ${isUnlocked ? reward.bg : 'bg-gray-100 grayscale'}`}>
-                                                                <span className="drop-shadow-lg transform transition group-hover:scale-110">{reward.emoji}</span>
-                                                            </div>
-                                                            <h4 className={`font-bold text-sm h-10 mb-1 ${isUnlocked ? 'text-gray-800' : 'text-gray-500'}`}>{reward.name}</h4>
-                                                            <p className={`font-black mb-4 px-3 py-1 rounded-full ${isUnlocked ? 'text-brand-600 bg-brand-50' : 'text-gray-400 bg-gray-100'}`}>{reward.points} <span className="text-xs font-normal">điểm</span></p>
-                                                            
-                                                            <button 
-                                                                disabled={!canRedeem}
-                                                                onClick={() => openRewardModal(reward)}
-                                                                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all ${canRedeem ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-200 hover:scale-105' : 'bg-gray-200 text-gray-400 cursor-not-allowed z-0'}`}
-                                                            >
-                                                                {canRedeem ? 'Đổi Quà' : (isUnlocked ? 'Thiếu điểm' : 'Khóa')}
-                                                            </button>
-                                                        </div>
-                                                    )
-                                                })}
+                                            <div className={`font-black text-lg ${isMinus ? 'text-orange-500' : 'text-brand-600'}`}>
+                                                {isMinus ? '-' : '+'}{t.amount}
                                             </div>
                                         </div>
                                     )
-                                })}
+                                }) : (
+                                    <div className="text-center py-16 bg-white rounded-3xl shadow-sm border border-gray-50">
+                                        <div className="text-6xl mb-4 grayscale opacity-40">🍃</div>
+                                        <p className="text-gray-500 font-medium">Chưa có giao dịch nào</p>
+                                    </div>
+                                )}
+                                <div className="pt-6 text-center">
+                                    <button onClick={handleLogout} className="px-6 py-2.5 bg-white border border-red-100 text-red-500 font-bold text-sm rounded-full hover:bg-red-50 transition active:scale-95 shadow-sm">
+                                        <i className="fas fa-sign-out-alt mr-2"></i> Đăng xuất
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
-
-                    <div className="text-center pb-4 pt-4">
-                        <button onClick={() => {setUserData(null); setMode('login');}} className="text-gray-400 text-sm hover:text-red-500 transition flex items-center justify-center gap-2 mx-auto">
-                            <i className="fas fa-sign-out-alt"></i> Đăng xuất
-                        </button>
+                        )}
                     </div>
 
-                    {/* MODAL XÁC NHẬN ĐỔI QUÀ (CẬP NHẬT: Thêm thông tin ship) */}
+                    {/* BOTTOM NAVIGATION BAR (FIXED FOR DESKTOP & MOBILE) */}
+                    <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none pb-0">
+                        <div className="max-w-lg mx-auto bg-white/95 backdrop-blur-md shadow-[0_-10px_30px_rgba(0,0,0,0.1)] sm:rounded-t-3xl border-t sm:border-x border-gray-100 flex justify-around p-2 sm:p-3 pointer-events-auto">
+                            <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center justify-center w-20 py-2 rounded-2xl transition-all ${activeTab === 'home' ? 'text-brand-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                                <i className={`fas fa-id-card text-xl mb-1 ${activeTab === 'home' ? 'drop-shadow-sm' : ''}`}></i>
+                                <span className={`text-[10px] font-bold ${activeTab === 'home' ? 'opacity-100' : 'opacity-70'}`}>Thẻ</span>
+                            </button>
+                            <button onClick={() => setActiveTab('rewards')} className={`flex flex-col items-center justify-center w-20 py-2 rounded-2xl transition-all ${activeTab === 'rewards' ? 'text-brand-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                                <i className={`fas fa-gift text-xl mb-1 ${activeTab === 'rewards' ? 'drop-shadow-sm' : ''}`}></i>
+                                <span className={`text-[10px] font-bold ${activeTab === 'rewards' ? 'opacity-100' : 'opacity-70'}`}>Đổi Quà</span>
+                            </button>
+                            <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center justify-center w-20 py-2 rounded-2xl transition-all ${activeTab === 'history' ? 'text-brand-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                                <i className={`fas fa-history text-xl mb-1 ${activeTab === 'history' ? 'drop-shadow-sm' : ''}`}></i>
+                                <span className={`text-[10px] font-bold ${activeTab === 'history' ? 'opacity-100' : 'opacity-70'}`}>Lịch sử</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* MODAL XÁC NHẬN ĐỔI QUÀ */}
                     {confirmReward && (
-                        <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border-2 border-brand-100 my-auto">
-                                <div className="text-center mb-4">
-                                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-2 shadow-inner ${confirmReward.bg}`}>
+                        <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in overflow-hidden">
+                            <div className="bg-white w-full max-w-md overflow-y-auto max-h-[95vh] p-6 sm:rounded-3xl rounded-t-3xl border-t sm:border border-brand-100 animate-slide-up shadow-2xl relative z-[60] hide-scrollbar">
+                                <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-5 sm:hidden"></div>
+                                
+                                <div className="text-center mb-5">
+                                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-3 shadow-inner ${confirmReward.bg}`}>
                                         <span className="drop-shadow-sm">{confirmReward.emoji}</span>
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900">Đổi {confirmReward.name}?</h3>
                                     <p className="text-gray-500 text-sm mt-1">Hệ thống sẽ trừ <span className="font-bold text-orange-500">{confirmReward.points} điểm</span>.</p>
                                 </div>
                                 
-                                <div className="bg-brand-50 p-4 rounded-xl mb-6 text-left border border-brand-100">
-                                    <p className="text-xs text-brand-800 font-bold mb-3"><i className="fas fa-truck mr-1"></i> Thông tin nhận quà</p>
+                                <div className="bg-gray-50 p-4 rounded-2xl mb-6 border border-gray-100 text-left">
+                                    <p className="text-xs text-gray-800 font-bold mb-3 uppercase tracking-wide"><i className="fas fa-truck mr-1 text-brand-500"></i> Thông tin nhận quà</p>
                                     
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Số điện thoại liên hệ</label>
-                                            <input 
-                                                type="tel" 
-                                                value={shippingPhone}
-                                                onChange={e => setShippingPhone(e.target.value)}
-                                                className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white"
-                                                placeholder="SĐT người nhận..."
-                                            />
+                                    <div className="space-y-4">
+                                        <div className="flex gap-3">
+                                            <div className="flex-1">
+                                                <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-1">SĐT liên hệ (*)</label>
+                                                <input type="tel" value={shippingPhone} onChange={e => setShippingPhone(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-bold text-gray-700 bg-white" required />
+                                            </div>
+                                            <div className="flex-[1.5]">
+                                                <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-1">Email nhận Voucher (*)</label>
+                                                <input type="email" value={shippingEmail} onChange={e => setShippingEmail(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-bold text-gray-700 bg-white" placeholder="Email..." required />
+                                            </div>
                                         </div>
+                                        
                                         <div>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Địa chỉ giao hàng (*)</label>
-                                            <textarea 
-                                                rows="2"
-                                                value={shippingAddress}
-                                                onChange={e => setShippingAddress(e.target.value)}
-                                                className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white resize-none"
-                                                placeholder="Số nhà, đường, phường/xã, quận/huyện..."
-                                            ></textarea>
+                                            <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-1">Địa chỉ giao quà vật lý (*)</label>
+                                            <div className="space-y-2">
+                                                <select value={prov} onChange={e => { setProv(e.target.value); setDist(''); setWard(''); }} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white font-medium text-gray-700">
+                                                    <option value="">Chọn Tỉnh/Thành phố</option>
+                                                    {vnProvinces.map(p => <option key={p.code} value={p.name}>{p.name}</option>)}
+                                                </select>
+                                                
+                                                <div className="flex gap-2">
+                                                    <select value={dist} onChange={e => { setDist(e.target.value); setWard(''); }} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white font-medium flex-1 text-gray-700" disabled={!prov}>
+                                                        <option value="">Quận/Huyện</option>
+                                                        {vnProvinces.find(p => p.name === prov)?.districts.map(d => <option key={d.code} value={d.name}>{d.name}</option>)}
+                                                    </select>
+                                                    
+                                                    <select value={ward} onChange={e => setWard(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white font-medium flex-1 text-gray-700" disabled={!dist}>
+                                                        <option value="">Phường/Xã</option>
+                                                        {vnProvinces.find(p => p.name === prov)?.districts.find(d => d.name === dist)?.wards.map(w => <option key={w.code} value={w.name}>{w.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                
+                                                <input type="text" value={street} onChange={e => setStreet(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-medium text-gray-700 bg-white" placeholder="Số nhà, Tên đường..." />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                                 
                                 <div className="flex gap-3">
-                                    <button 
-                                        onClick={() => setConfirmReward(null)}
-                                        disabled={isProcessing}
-                                        className="flex-1 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition text-sm"
-                                    >
+                                    <button onClick={() => setConfirmReward(null)} disabled={isProcessing} className="flex-[0.4] py-3.5 rounded-2xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition text-sm">
                                         Hủy
                                     </button>
-                                    <button 
-                                        onClick={processRewardRedemption}
-                                        disabled={isProcessing}
-                                        className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 shadow-lg shadow-brand-200 transition text-sm flex items-center justify-center gap-2"
-                                    >
+                                    <button onClick={processRewardRedemption} disabled={isProcessing} className="flex-1 py-3.5 rounded-2xl font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-lg shadow-brand-200 transition text-sm flex items-center justify-center gap-2">
                                         {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Xác Nhận Đổi'}
                                     </button>
                                 </div>
