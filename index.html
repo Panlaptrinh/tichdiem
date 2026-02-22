@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lá Mây - Hệ Thống Tích Điểm</title>
+    <link rel="icon" type="image/x-icon" href="favicon-96x96.ico">
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -30,7 +31,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
     <script>
-        tailwind.config = {
+        // Khởi tạo an toàn để tránh lỗi ReferenceError khi thư viện tải bất đồng bộ
+        window.tailwind = window.tailwind || {};
+        window.tailwind.config = {
             theme: {
                 extend: {
                     colors: {
@@ -77,6 +80,15 @@
             background-color: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
         }
+        
+        /* Custom Scrollbar for horizontal scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
 <body>
@@ -86,7 +98,6 @@
         const { useState, useEffect } = React;
         
         // --- Firebase Configuration ---
-        // Prioritize environment config if available
         let firebaseConfig;
         if (typeof window.__firebase_config !== 'undefined') {
              try {
@@ -97,7 +108,6 @@
         }
         
         if (!firebaseConfig) {
-             // Fallback config
              firebaseConfig = {
                 apiKey: "AIzaSyDLQBLROJ1ABogfjll-9ucznO3tchy-4aE",
                 authDomain: "shop-tich-diem.firebaseapp.com",
@@ -116,16 +126,32 @@
         const db = firebase.firestore();
         const appId = window.__app_id || 'lamay-loyalty-system'; 
 
+        // Logo URL gốc của bạn
+        const LOGO_URL = "favicon-96x96.ico";
+
+        // --- Danh sách quà tặng phân cấp theo hạng thẻ ---
+        const REWARDS_CATALOG = [
+            // Hạng Lá Mây (0+)
+            { id: 'gift_1', tier: 0, name: 'Móc khóa Lá Mây', points: 500, emoji: '🗝️', color: 'text-brand-600', bg: 'bg-brand-50' },
+            { id: 'gift_2', tier: 0, name: 'Voucher 20K', points: 800, emoji: '🎫', color: 'text-brand-600', bg: 'bg-brand-50' },
+            
+            // Hạng Củ Dền (Mở khóa khi đạt 1500+ điểm)
+            { id: 'gift_3', tier: 1500, name: 'Túi Tote Eco', points: 1500, emoji: '🛍️', color: 'text-rose-600', bg: 'bg-rose-50' },
+            { id: 'gift_4', tier: 1500, name: 'Voucher 50K', points: 2000, emoji: '🎟️', color: 'text-rose-600', bg: 'bg-rose-50' },
+            
+            // Hạng Nghệ (Mở khóa khi đạt 3000+ điểm)
+            { id: 'gift_5', tier: 3000, name: 'Gấu bông Lá Mây', points: 3000, emoji: '🧸', color: 'text-amber-600', bg: 'bg-amber-50' },
+            { id: 'gift_6', tier: 3000, name: 'Set Trà Hữu Cơ', points: 4000, emoji: '🍵', color: 'text-amber-600', bg: 'bg-amber-50' },
+            
+            // Hạng Lá Cẩm (Đặc quyền VVIP 7000+ điểm)
+            { id: 'gift_7', tier: 7000, name: 'Bình Giữ Nhiệt', points: 6000, emoji: '🧋', color: 'text-purple-600', bg: 'bg-purple-50' },
+            { id: 'gift_8', tier: 7000, name: 'Set Quà VVIP', points: 10000, emoji: '🎁', color: 'text-purple-600', bg: 'bg-purple-50' }
+        ];
+
         // --- Helpers ---
-        const getCollectionRef = (name) => {
-            return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(name);
-        };
-        const getUserRef = (phone) => {
-            return getCollectionRef('users').doc(phone);
-        };
-        const getVoucherRef = (code) => {
-            return getCollectionRef('vouchers').doc(code);
-        };
+        const getCollectionRef = (name) => db.collection('artifacts').doc(appId).collection('public').doc('data').collection(name);
+        const getUserRef = (phone) => getCollectionRef('users').doc(phone);
+        const getVoucherRef = (code) => getCollectionRef('vouchers').doc(code);
 
         const generateCode = () => {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -152,11 +178,19 @@
         };
 
         const BrandLogo = ({ size = "md" }) => {
-            const fontSize = size === "lg" ? "text-6xl" : size === "md" ? "text-4xl" : "text-2xl";
+            // Hiển thị logo bằng thẻ img thay cho icon tĩnh
+            const dims = size === "lg" ? "h-20" : size === "md" ? "h-12" : "h-8";
             return (
-                <div className={`${fontSize} text-brand-600`}>
-                     <i className="fas fa-leaf"></i>
-                </div>
+                <img 
+                    src={LOGO_URL} 
+                    alt="Lá Mây Logo" 
+                    className={`${dims} object-contain drop-shadow-sm hover:scale-105 transition duration-300`}
+                    onError={(e) => {
+                        // Ảnh dự phòng nếu không tìm thấy
+                        e.target.onerror = null; 
+                        e.target.src = "logolamay.png";
+                    }}
+                />
             );
         };
 
@@ -193,7 +227,7 @@
 
             if (loading) return (
                 <div className="min-h-screen flex items-center justify-center bg-brand-50">
-                    <div className="text-center animate-pulse">
+                    <div className="text-center animate-pulse flex flex-col items-center">
                         <BrandLogo size="lg" />
                         <p className="mt-4 text-brand-800 font-medium">Đang tải dữ liệu...</p>
                     </div>
@@ -208,7 +242,7 @@
                         <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
                             <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('home')}>
                                 <BrandLogo size="md" />
-                                <span className="font-serif font-bold text-xl text-brand-900 hidden md:block">Lá Mây</span>
+                                <span className="font-serif font-bold text-xl text-brand-900 hidden md:block"></span>
                             </div>
                             {view !== 'home' && (
                                 <button onClick={() => setView('home')} className="px-4 py-2 rounded-full text-sm font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 transition flex items-center gap-2">
@@ -225,7 +259,7 @@
                     </main>
 
                     <footer className="text-center py-8 text-brand-800/60 text-sm">
-                        <p>© 2025 Lá Mây - Natural & Organic.</p>
+                        <p>© 2026 Lá Mây - Natural & Organic.</p>
                         <p className="text-xs mt-1">Hệ thống tích điểm khách hàng thân thiết</p>
                     </footer>
                 </div>
@@ -234,8 +268,9 @@
 
         const HomeView = ({ setView }) => (
             <div className="flex flex-col items-center justify-center py-10 gap-10 animate-fade-in">
-                <div className="text-center max-w-2xl">
-                    <h1 className="text-4xl md:text-5xl font-bold text-brand-900 mb-4 logo-font">Lá Mây</h1>
+                <div className="text-center max-w-2xl flex flex-col items-center">
+                    <BrandLogo size="lg" />
+                    <h1 className="text-4xl md:text-5xl font-bold text-brand-900 mb-4 mt-4 logo-font">Lá Mây</h1>
                     <p className="text-brand-700 text-lg">Chào mừng bạn đến với hệ thống tích điểm.</p>
                 </div>
                 
@@ -249,7 +284,7 @@
                             <i className="fas fa-user"></i>
                         </div>
                         <h3 className="text-2xl font-bold text-brand-900 mb-2">Khách Hàng</h3>
-                        <p className="text-gray-600 text-sm">Nhập mã thưởng, kiểm tra điểm và xem thẻ thành viên.</p>
+                        <p className="text-gray-600 text-sm">Nhập mã thưởng, đổi quà và xem thẻ thành viên.</p>
                     </button>
 
                     <button 
@@ -272,11 +307,11 @@
             const [pointValue, setPointValue] = useState('');
             const [generatedCode, setGeneratedCode] = useState('');
             const [usersList, setUsersList] = useState([]);
+            const [redemptionsList, setRedemptionsList] = useState([]); 
             const [pin, setPin] = useState('');
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
             
-            // Adjust Points Modal State
             const [showAdjustModal, setShowAdjustModal] = useState(false);
             const [adjustTargetUser, setAdjustTargetUser] = useState(null);
             const [adjustAmount, setAdjustAmount] = useState('');
@@ -284,13 +319,25 @@
             const [adjustNote, setAdjustNote] = useState('');
 
             useEffect(() => {
-                if (!isAuthenticated || activeTab !== 'list') return;
-                const unsubscribe = getCollectionRef('users').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+                if (!isAuthenticated) return;
+                
+                // Lấy danh sách users
+                const unsubscribeUsers = getCollectionRef('users').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
                     const users = snapshot.docs.map(doc => doc.data());
                     setUsersList(users);
                 });
-                return () => unsubscribe();
-            }, [activeTab, isAuthenticated]);
+
+                // Lấy danh sách yêu cầu đổi quà
+                const unsubscribeRedemptions = getCollectionRef('redemptions').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+                    const reqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setRedemptionsList(reqs);
+                });
+
+                return () => {
+                    unsubscribeUsers();
+                    unsubscribeRedemptions();
+                };
+            }, [isAuthenticated]);
 
             const handleCreateCode = async (e) => {
                 e.preventDefault();
@@ -326,7 +373,8 @@
                     "Họ tên": user.name,
                     "Số điện thoại": user.phoneNumber,
                     "Điểm hiện tại": user.currentPoints,
-                    "Ngày tham gia": user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : ''
+                    "Ngày tham gia": user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '',
+                    "Địa chỉ đã lưu": user.address || ''
                 }));
                 const ws = XLSX.utils.json_to_sheet(dataToExport);
                 const wb = XLSX.utils.book_new();
@@ -377,10 +425,41 @@
                 setIsSubmitting(false);
             };
 
+            const handleCopy = () => {
+                const el = document.createElement('textarea');
+                el.value = generatedCode;
+                el.setAttribute('readonly', '');
+                el.style.position = 'absolute';
+                el.style.left = '-9999px';
+                document.body.appendChild(el);
+                el.select();
+                try {
+                    document.execCommand('copy');
+                    showNotify('Đã sao chép mã!');
+                } catch (err) {
+                    showNotify('Sao chép thất bại!', 'error');
+                }
+                document.body.removeChild(el);
+            };
+
+            const handleUpdateRedemptionStatus = async (id, newStatus) => {
+                try {
+                    await getCollectionRef('redemptions').doc(id).update({
+                        status: newStatus,
+                        updatedAt: new Date().toISOString()
+                    });
+                    showNotify('Đã cập nhật trạng thái đơn quà!', 'success');
+                } catch (error) {
+                    showNotify('Lỗi cập nhật: ' + error.message, 'error');
+                }
+            };
+
             if (!isAuthenticated) {
                 return (
                     <div className="max-w-md mx-auto glass-panel p-10 rounded-3xl text-center animate-fade-in mt-10">
-                        <div className="mb-6 text-brand-600 text-5xl"><i className="fas fa-shield-alt"></i></div>
+                        <div className="mb-6 flex justify-center">
+                            <BrandLogo size="lg" />
+                        </div>
                         <h3 className="text-2xl font-bold mb-2 text-brand-900">Quản trị viên</h3>
                         <p className="text-gray-500 mb-8">Vui lòng nhập mã PIN bảo mật</p>
                         <form onSubmit={(e) => {
@@ -420,6 +499,17 @@
                         >
                             <i className="fas fa-users mr-2"></i>Danh Sách Khách
                         </button>
+                        <button 
+                            onClick={() => setActiveTab('requests')}
+                            className={`flex-1 py-5 font-bold text-sm transition-colors whitespace-nowrap px-2 ${activeTab === 'requests' ? 'bg-brand-50 text-brand-700 border-b-2 border-brand-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                            <i className="fas fa-gift mr-2"></i>Yêu Cầu Quà
+                            {redemptionsList.filter(r => r.status === 'pending').length > 0 && (
+                                <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse shadow-sm">
+                                    {redemptionsList.filter(r => r.status === 'pending').length}
+                                </span>
+                            )}
+                        </button>
                     </div>
 
                     <div className="p-8 bg-gray-50/50 h-full">
@@ -458,7 +548,7 @@
                                         <div className="mt-8 bg-brand-50 border border-brand-200 rounded-xl p-6 text-center animate-fade-in relative overflow-hidden">
                                             <div className="absolute top-0 left-0 w-full h-1 bg-brand-300"></div>
                                             <p className="text-brand-800 text-sm mb-3 font-medium uppercase tracking-wider">Mã thưởng vừa tạo</p>
-                                            <div className="bg-white border-2 border-dashed border-brand-400 rounded-lg p-4 mb-4 cursor-pointer hover:bg-gray-50 transition group" onClick={() => {navigator.clipboard.writeText(generatedCode); showNotify('Đã sao chép mã!');}}>
+                                            <div className="bg-white border-2 border-dashed border-brand-400 rounded-lg p-4 mb-4 cursor-pointer hover:bg-gray-50 transition group" onClick={handleCopy}>
                                                 <span className="text-3xl font-black text-brand-700 tracking-wider font-mono select-all">{generatedCode}</span>
                                                 <div className="text-xs text-gray-400 mt-1 group-hover:text-brand-500"><i className="fas fa-copy mr-1"></i> Chạm để sao chép</div>
                                             </div>
@@ -515,6 +605,70 @@
                                             ))}
                                             {usersList.length === 0 && (
                                                 <tr><td colSpan="4" className="p-8 text-center text-gray-400">Chưa có dữ liệu khách hàng</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'requests' && (
+                            <div className="animate-fade-in">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-bold text-brand-900">Yêu cầu đổi quà tặng ({redemptionsList.length})</h3>
+                                    <p className="text-sm text-gray-500">Quản lý và giao quà khách hàng online</p>
+                                </div>
+                                <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+                                    <table className="w-full text-left min-w-[800px]">
+                                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
+                                            <tr>
+                                                <th className="p-4 w-1/3">Người nhận & Địa chỉ giao hàng</th>
+                                                <th className="p-4">Phần quà</th>
+                                                <th className="p-4 text-center">Thời gian</th>
+                                                <th className="p-4 text-center">Trạng thái</th>
+                                                <th className="p-4 text-center">Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {redemptionsList.map((r) => (
+                                                <tr key={r.id} className="hover:bg-brand-50 transition-colors">
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-gray-800">{r.userName}</div>
+                                                        <div className="text-gray-600 text-xs mt-1">
+                                                            <i className="fas fa-phone-alt w-4 text-center"></i> <span className="font-mono">{r.shippingPhone || r.phoneNumber}</span>
+                                                        </div>
+                                                        {r.shippingAddress && (
+                                                            <div className="text-gray-500 text-xs mt-1 leading-relaxed bg-yellow-50 p-2 rounded border border-yellow-100">
+                                                                <i className="fas fa-map-marker-alt w-4 text-center text-red-400"></i> {r.shippingAddress}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-brand-700">{r.rewardName}</div>
+                                                        <div className="text-orange-500 text-xs font-bold">-{r.points} điểm</div>
+                                                    </td>
+                                                    <td className="p-4 text-center text-gray-500 text-sm">
+                                                        {r.timestamp ? new Date(r.timestamp.seconds * 1000).toLocaleString('vi-VN') : '-'}
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-3 py-1 rounded-full font-bold text-xs ${r.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                                            {r.status === 'pending' ? 'Chờ gửi hàng' : 'Đã giao quà'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        {r.status === 'pending' && (
+                                                            <button 
+                                                                onClick={() => handleUpdateRedemptionStatus(r.id, 'completed')}
+                                                                className="text-white bg-brand-600 hover:bg-brand-700 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
+                                                            >
+                                                                <i className="fas fa-check mr-1"></i> Xong
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {redemptionsList.length === 0 && (
+                                                <tr><td colSpan="5" className="p-8 text-center text-gray-400">Chưa có yêu cầu đổi quà nào</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -601,6 +755,12 @@
             const [history, setHistory] = useState([]);
             const [voucherCode, setVoucherCode] = useState(''); 
             const [isProcessing, setIsProcessing] = useState(false);
+            
+            const [confirmReward, setConfirmReward] = useState(null); 
+            const [shippingAddress, setShippingAddress] = useState('');
+            const [shippingPhone, setShippingPhone] = useState('');
+
+            const [activeTab, setActiveTab] = useState('dashboard');
 
             useEffect(() => {
                 if (mode === 'dashboard' && userData) {
@@ -619,9 +779,7 @@
                 }
             }, [mode, userData?.phoneNumber]);
 
-            // --- Card Style Logic ---
             const getCardStyle = (points) => {
-                // > 7000: Lá Cẩm (Tím) - Magenta/Purple
                 if (points > 7000) return {
                     bg: 'bg-gradient-to-br from-purple-900 via-fuchsia-800 to-purple-700',
                     icon: 'fa-gem',
@@ -629,7 +787,6 @@
                     textColor: 'text-fuchsia-100',
                     subText: 'THÀNH VIÊN KIM CƯƠNG'
                 };
-                // > 3000: Nghệ (Vàng) - Turmeric/Gold
                 if (points > 3000) return {
                     bg: 'bg-gradient-to-br from-amber-700 via-yellow-600 to-amber-500',
                     icon: 'fa-crown',
@@ -637,7 +794,6 @@
                     textColor: 'text-amber-100',
                     subText: 'THÀNH VIÊN VÀNG'
                 };
-                // > 1500: Củ Dền (Hồng/Đỏ) - Beetroot/Pink
                 if (points > 1500) return {
                     bg: 'bg-gradient-to-br from-rose-900 via-pink-700 to-rose-600',
                     icon: 'fa-star',
@@ -645,7 +801,6 @@
                     textColor: 'text-rose-100',
                     subText: 'THÀNH VIÊN BẠC'
                 };
-                // Default: Lá Mây (Xanh) - Green
                 return {
                     bg: 'bg-gradient-to-br from-brand-800 to-brand-600',
                     icon: 'fa-leaf',
@@ -746,11 +901,74 @@
                 setIsProcessing(false);
             };
 
+            // Hàm xử lý khi xác nhận đổi quà
+            const processRewardRedemption = async () => {
+                if (!confirmReward || !userData) return;
+                
+                // Kiểm tra địa chỉ
+                if (!shippingAddress.trim()) {
+                    showNotify("Vui lòng nhập địa chỉ để cửa hàng giao quà nhé!", 'error');
+                    return;
+                }
+
+                setIsProcessing(true);
+                try {
+                    const currentPoints = userData.currentPoints || 0;
+                    if (currentPoints < confirmReward.points) {
+                        throw new Error("Bạn không đủ điểm để đổi quà này.");
+                    }
+
+                    const newPoints = currentPoints - confirmReward.points;
+
+                    // 1. Cập nhật điểm & lưu lại địa chỉ mới cho user
+                    await getUserRef(userData.phoneNumber).update({
+                        currentPoints: newPoints,
+                        address: shippingAddress // Tự động lưu địa chỉ cho lần sau
+                    });
+
+                    // 2. Thêm vào Lịch sử giao dịch của khách
+                    await getCollectionRef('transactions').add({
+                        phoneNumber: userData.phoneNumber,
+                        amount: confirmReward.points,
+                        type: 'use_reward',
+                        note: 'Đổi quà: ' + confirmReward.name,
+                        rewardId: confirmReward.id,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // 3. Gửi yêu cầu qua tab Admin kèm thông tin giao hàng
+                    await getCollectionRef('redemptions').add({
+                        phoneNumber: userData.phoneNumber,
+                        userName: userData.name,
+                        shippingPhone: shippingPhone || userData.phoneNumber,
+                        shippingAddress: shippingAddress,
+                        rewardId: confirmReward.id,
+                        rewardName: confirmReward.name,
+                        points: confirmReward.points,
+                        status: 'pending',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    showNotify(`Yêu cầu đổi quà đã được ghi nhận. Quà sẽ sớm được giao!`, 'success');
+                    setConfirmReward(null); // Đóng modal
+                } catch (error) {
+                    showNotify(error.message, 'error');
+                }
+                setIsProcessing(false);
+            };
+
+            const openRewardModal = (reward) => {
+                setConfirmReward(reward);
+                setShippingPhone(userData.phoneNumber);
+                setShippingAddress(userData.address || ''); // Điền sẵn địa chỉ nếu đã có
+            };
+
             if (mode === 'login') {
                 return (
                     <div className="max-w-md mx-auto glass-panel p-8 rounded-3xl animate-fade-in">
-                        <div className="text-center mb-8">
-                            <h3 className="text-2xl font-bold text-brand-900 mb-2 font-serif">Đăng Nhập</h3>
+                        <div className="text-center mb-8 flex flex-col items-center">
+                            <BrandLogo size="md" />
+                            <h3 className="text-2xl font-bold text-brand-900 mb-2 mt-4 font-serif">Đăng Nhập</h3>
                             <p className="text-gray-500 text-sm">Nhập số điện thoại để xem thẻ thành viên</p>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-5">
@@ -779,8 +997,9 @@
             if (mode === 'register') {
                 return (
                     <div className="max-w-md mx-auto glass-panel p-8 rounded-3xl animate-fade-in">
-                        <div className="text-center mb-8">
-                            <h3 className="text-2xl font-bold text-brand-900 mb-2 font-serif">Đăng Ký Mới</h3>
+                        <div className="text-center mb-8 flex flex-col items-center">
+                            <BrandLogo size="md" />
+                            <h3 className="text-2xl font-bold text-brand-900 mb-2 mt-4 font-serif">Đăng Ký Mới</h3>
                             <p className="text-gray-500 text-sm">Trở thành thành viên của Lá Mây</p>
                         </div>
                         <form onSubmit={handleRegister} className="space-y-5">
@@ -821,100 +1040,242 @@
             const cardStyle = getCardStyle(userData.currentPoints || 0);
 
             return (
-                <div className="max-w-lg mx-auto space-y-8 animate-fade-in">
-                    {/* Membership Card - DYNAMIC COLOR */}
-                    <div className={`relative ${cardStyle.bg} rounded-3xl p-8 text-white shadow-2xl overflow-hidden min-h-[220px] flex flex-col justify-between transform transition hover:scale-[1.02] duration-500`}>
-                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
-                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-10 rounded-full blur-xl"></div>
-                        
-                        <div className="flex justify-between items-start relative z-10">
-                            <div>
-                                <h2 className="text-xl font-serif tracking-wide opacity-95">{cardStyle.name}</h2>
-                                <p className={`text-xs tracking-widest mt-1 opacity-80 uppercase`}>{cardStyle.subText}</p>
-                            </div>
-                            <i className={`fas ${cardStyle.icon} text-4xl opacity-30`}></i>
-                        </div>
-
-                        <div className="relative z-10 mt-6">
-                            <div className="flex items-end gap-3">
-                                <h1 className="text-6xl font-bold drop-shadow-md">{userData.currentPoints}</h1>
-                                <span className="text-xl font-medium mb-2 opacity-80">điểm</span>
-                            </div>
-                            {/* Progress bar simulation for fun */}
-                            <div className="w-full h-1.5 bg-black/20 rounded-full mt-2 overflow-hidden">
-                                <div className="h-full bg-white/50 w-3/4"></div>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between items-end relative z-10 mt-4">
-                            <div>
-                                <p className="text-xs uppercase opacity-70">Chủ thẻ</p>
-                                <p className="font-bold text-lg tracking-wide shadow-black drop-shadow-sm">{userData.name}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-xs font-mono opacity-80">{userData.phoneNumber}</p>
-                            </div>
-                        </div>
+                <div className="max-w-lg mx-auto space-y-6 animate-fade-in relative">
+                    {/* Tabs Navigation */}
+                    <div className="flex bg-white rounded-2xl p-1 shadow-sm border border-gray-100">
+                        <button 
+                            onClick={() => setActiveTab('dashboard')} 
+                            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-brand-50 text-brand-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                            <i className="fas fa-id-card mr-2"></i>Thẻ & Tích Điểm
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('rewards')} 
+                            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'rewards' ? 'bg-brand-50 text-brand-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                            <i className="fas fa-gift mr-2"></i>Đổi Quà Tặng
+                        </button>
                     </div>
 
-                    {/* REDEEM CODE SECTION */}
-                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-brand-100 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
-                        <h3 className="text-lg font-bold text-brand-900 mb-4 flex items-center gap-2">
-                            <i className="fas fa-gift text-brand-500"></i> Nhập Mã Thưởng
-                        </h3>
-                        <form onSubmit={handleRedeemCode} className="flex gap-2">
-                            <input 
-                                type="text" 
-                                value={voucherCode}
-                                onChange={e => setVoucherCode(e.target.value)}
-                                className="flex-1 p-3 border border-brand-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none uppercase font-bold text-brand-800 placeholder-brand-300"
-                                placeholder="VD: LAMAY-X1Y2"
-                            />
-                            <button disabled={isProcessing} type="submit" className="bg-brand-600 text-white px-6 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
-                                {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Nạp'}
-                            </button>
-                        </form>
-                        <p className="text-xs text-gray-500 mt-2 ml-1">* Nhập mã in trên hóa đơn hoặc nhận được qua tin nhắn.</p>
-                    </div>
-
-                    {/* Transaction History */}
-                    <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-brand-50">
-                        <h3 className="text-lg font-bold text-brand-900 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
-                            <i className="fas fa-history text-brand-500"></i> Lịch sử giao dịch
-                        </h3>
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                            {history.length > 0 ? history.map((t, idx) => (
-                                <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-50 hover:bg-brand-50 transition">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${(t.type === 'use' || t.type === 'use_direct') ? 'bg-orange-100 text-orange-600' : 'bg-brand-100 text-brand-600'}`}>
-                                            <i className={`fas ${(t.type === 'use' || t.type === 'use_direct') ? 'fa-minus' : 'fa-plus'}`}></i>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-gray-800 text-sm">{t.note || (t.type === 'earn_direct' ? 'Tích điểm tại quầy' : 'Giao dịch')}</p>
-                                            <p className="text-xs text-gray-400">
-                                                {t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleString('vi-VN') : 'Vừa xong'}
-                                            </p>
-                                        </div>
+                    {activeTab === 'dashboard' && (
+                        <div className="space-y-6 animate-fade-in">
+                            {/* Membership Card */}
+                            <div className={`relative ${cardStyle.bg} rounded-3xl p-8 text-white shadow-2xl overflow-hidden min-h-[220px] flex flex-col justify-between transform transition hover:scale-[1.02] duration-500`}>
+                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
+                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-10 rounded-full blur-xl"></div>
+                                
+                                <div className="flex justify-between items-start relative z-10">
+                                    <div>
+                                        <h2 className="text-xl font-serif tracking-wide opacity-95">{cardStyle.name}</h2>
+                                        <p className={`text-xs tracking-widest mt-1 opacity-80 uppercase`}>{cardStyle.subText}</p>
                                     </div>
-                                    <div className={`font-bold text-lg ${(t.type === 'use' || t.type === 'use_direct') ? 'text-orange-500' : 'text-brand-600'}`}>
-                                        {(t.type === 'use' || t.type === 'use_direct') ? '-' : '+'}{t.amount}
+                                    <i className={`fas ${cardStyle.icon} text-4xl opacity-30`}></i>
+                                </div>
+
+                                <div className="relative z-10 mt-6">
+                                    <div className="flex items-end gap-3">
+                                        <h1 className="text-6xl font-bold drop-shadow-md">{userData.currentPoints}</h1>
+                                        <span className="text-xl font-medium mb-2 opacity-80">điểm</span>
+                                    </div>
+                                    {/* Progress bar simulation */}
+                                    <div className="w-full h-1.5 bg-black/20 rounded-full mt-2 overflow-hidden">
+                                        <div className="h-full bg-white/50 w-3/4"></div>
                                     </div>
                                 </div>
-                            )) : (
-                                <div className="text-center py-10 text-gray-400">
-                                    <i className="fas fa-leaf text-4xl mb-3 opacity-30"></i>
-                                    <p className="text-sm">Bạn chưa có giao dịch nào.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
 
-                    <div className="text-center pb-4">
+                                <div className="flex justify-between items-end relative z-10 mt-4">
+                                    <div>
+                                        <p className="text-xs uppercase opacity-70">Chủ thẻ</p>
+                                        <p className="font-bold text-lg tracking-wide shadow-black drop-shadow-sm">{userData.name}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-mono opacity-80">{userData.phoneNumber}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* REDEEM CODE SECTION */}
+                            <div className="bg-white p-6 rounded-3xl shadow-lg border border-brand-100 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
+                                <h3 className="text-lg font-bold text-brand-900 mb-4 flex items-center gap-2">
+                                    <i className="fas fa-qrcode text-brand-500"></i> Nhập Mã Thưởng
+                                </h3>
+                                <form onSubmit={handleRedeemCode} className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={voucherCode}
+                                        onChange={e => setVoucherCode(e.target.value)}
+                                        className="flex-1 p-3 border border-brand-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none uppercase font-bold text-brand-800 placeholder-brand-300"
+                                        placeholder="VD: LAMAY-X1Y2"
+                                    />
+                                    <button disabled={isProcessing} type="submit" className="bg-brand-600 text-white px-6 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-200">
+                                        {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Nạp'}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Transaction History */}
+                            <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-brand-50">
+                                <h3 className="text-lg font-bold text-brand-900 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
+                                    <i className="fas fa-history text-brand-500"></i> Lịch sử giao dịch
+                                </h3>
+                                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                                    {history.length > 0 ? history.map((t, idx) => {
+                                        const isMinus = t.type === 'use' || t.type === 'use_direct' || t.type === 'use_reward';
+                                        return (
+                                            <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-50 hover:bg-brand-50 transition">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isMinus ? 'bg-orange-100 text-orange-600' : 'bg-brand-100 text-brand-600'}`}>
+                                                        <i className={`fas ${isMinus ? 'fa-minus' : 'fa-plus'}`}></i>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-gray-800 text-sm">{t.note || (t.type === 'earn_direct' ? 'Tích điểm tại quầy' : 'Giao dịch')}</p>
+                                                        <p className="text-xs text-gray-400">
+                                                            {t.timestamp ? new Date(t.timestamp.seconds * 1000).toLocaleString('vi-VN') : 'Vừa xong'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className={`font-bold text-lg ${isMinus ? 'text-orange-500' : 'text-brand-600'}`}>
+                                                    {isMinus ? '-' : '+'}{t.amount}
+                                                </div>
+                                            </div>
+                                        )
+                                    }) : (
+                                        <div className="text-center py-10 text-gray-400">
+                                            <i className="fas fa-leaf text-4xl mb-3 opacity-30"></i>
+                                            <p className="text-sm">Bạn chưa có giao dịch nào.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'rewards' && (
+                        <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-brand-50 animate-fade-in">
+                            <div className="mb-6 text-center">
+                                <h3 className="text-xl font-bold text-brand-900 mb-1">Cửa Hàng Quà Tặng</h3>
+                                <p className="text-sm text-gray-500">Tích lũy điểm để mở khóa các đặc quyền cao cấp hơn.</p>
+                                <p className="text-sm font-medium mt-1">Điểm hiện tại: <span className="font-bold text-brand-600 text-lg">{userData.currentPoints}</span></p>
+                            </div>
+                            
+                            <div className="space-y-8">
+                                {[
+                                    { label: 'Thẻ Lá Mây (Mọi thành viên)', tierPoints: 0, color: 'text-brand-600', icon: 'fa-leaf' },
+                                    { label: 'Thẻ Củ Dền (Mở khóa > 1.500 đ)', tierPoints: 1500, color: 'text-rose-600', icon: 'fa-star' },
+                                    { label: 'Thẻ Nghệ (Mở khóa > 3.000 đ)', tierPoints: 3000, color: 'text-amber-600', icon: 'fa-crown' },
+                                    { label: 'Thẻ Lá Cẩm (Đặc quyền > 7.000 đ)', tierPoints: 7000, color: 'text-purple-600', icon: 'fa-gem' }
+                                ].map((group) => {
+                                    const isUnlocked = (userData.currentPoints || 0) >= group.tierPoints;
+                                    const groupRewards = REWARDS_CATALOG.filter(r => r.tier === group.tierPoints);
+                                    
+                                    return (
+                                        <div key={group.tierPoints} className="relative">
+                                            <div className={`flex items-center gap-2 mb-3 border-b pb-2 ${isUnlocked ? group.color + ' border-brand-100' : 'text-gray-400 border-gray-100'}`}>
+                                                <i className={`fas ${isUnlocked ? group.icon : 'fa-lock'}`}></i>
+                                                <h4 className="font-bold text-sm uppercase tracking-wider">{group.label}</h4>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {groupRewards.map((reward) => {
+                                                    const canRedeem = isUnlocked && ((userData.currentPoints || 0) >= reward.points);
+                                                    return (
+                                                        <div key={reward.id} className={`relative rounded-3xl border p-4 flex flex-col items-center text-center transition-all duration-300 ${canRedeem ? 'border-brand-200 bg-white shadow-md hover:shadow-xl hover:-translate-y-1' : 'border-gray-100 bg-gray-50/80 opacity-90'}`}>
+                                                            {!isUnlocked && (
+                                                                <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-10 rounded-3xl flex items-center justify-center">
+                                                                    <div className="bg-gray-800/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm font-medium">
+                                                                        <i className="fas fa-lock mr-1"></i> Khóa
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-5xl mb-4 shadow-inner ${isUnlocked ? reward.bg : 'bg-gray-100 grayscale'}`}>
+                                                                <span className="drop-shadow-lg transform transition group-hover:scale-110">{reward.emoji}</span>
+                                                            </div>
+                                                            <h4 className={`font-bold text-sm h-10 mb-1 ${isUnlocked ? 'text-gray-800' : 'text-gray-500'}`}>{reward.name}</h4>
+                                                            <p className={`font-black mb-4 px-3 py-1 rounded-full ${isUnlocked ? 'text-brand-600 bg-brand-50' : 'text-gray-400 bg-gray-100'}`}>{reward.points} <span className="text-xs font-normal">điểm</span></p>
+                                                            
+                                                            <button 
+                                                                disabled={!canRedeem}
+                                                                onClick={() => openRewardModal(reward)}
+                                                                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all ${canRedeem ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-200 hover:scale-105' : 'bg-gray-200 text-gray-400 cursor-not-allowed z-0'}`}
+                                                            >
+                                                                {canRedeem ? 'Đổi Quà' : (isUnlocked ? 'Thiếu điểm' : 'Khóa')}
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="text-center pb-4 pt-4">
                         <button onClick={() => {setUserData(null); setMode('login');}} className="text-gray-400 text-sm hover:text-red-500 transition flex items-center justify-center gap-2 mx-auto">
                             <i className="fas fa-sign-out-alt"></i> Đăng xuất
                         </button>
                     </div>
+
+                    {/* MODAL XÁC NHẬN ĐỔI QUÀ (CẬP NHẬT: Thêm thông tin ship) */}
+                    {confirmReward && (
+                        <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border-2 border-brand-100 my-auto">
+                                <div className="text-center mb-4">
+                                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-2 shadow-inner ${confirmReward.bg}`}>
+                                        <span className="drop-shadow-sm">{confirmReward.emoji}</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900">Đổi {confirmReward.name}?</h3>
+                                    <p className="text-gray-500 text-sm mt-1">Hệ thống sẽ trừ <span className="font-bold text-orange-500">{confirmReward.points} điểm</span>.</p>
+                                </div>
+                                
+                                <div className="bg-brand-50 p-4 rounded-xl mb-6 text-left border border-brand-100">
+                                    <p className="text-xs text-brand-800 font-bold mb-3"><i className="fas fa-truck mr-1"></i> Thông tin nhận quà</p>
+                                    
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Số điện thoại liên hệ</label>
+                                            <input 
+                                                type="tel" 
+                                                value={shippingPhone}
+                                                onChange={e => setShippingPhone(e.target.value)}
+                                                className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white"
+                                                placeholder="SĐT người nhận..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Địa chỉ giao hàng (*)</label>
+                                            <textarea 
+                                                rows="2"
+                                                value={shippingAddress}
+                                                onChange={e => setShippingAddress(e.target.value)}
+                                                className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white resize-none"
+                                                placeholder="Số nhà, đường, phường/xã, quận/huyện..."
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={() => setConfirmReward(null)}
+                                        disabled={isProcessing}
+                                        className="flex-1 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition text-sm"
+                                    >
+                                        Hủy
+                                    </button>
+                                    <button 
+                                        onClick={processRewardRedemption}
+                                        disabled={isProcessing}
+                                        className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 shadow-lg shadow-brand-200 transition text-sm flex items-center justify-center gap-2"
+                                    >
+                                        {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : 'Xác Nhận Đổi'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
